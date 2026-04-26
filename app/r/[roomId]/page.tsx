@@ -517,7 +517,7 @@ export default function RoomPage() {
   const { sendEvent, status } = useRoomChannel({
     roomId,
     onEvent:  handleEvent,
-    enabled:  !!room && hasBothPlayers,
+    enabled:  !!room,
   })
 
   // ── Initial room load ────────────────────────────────────────────────────
