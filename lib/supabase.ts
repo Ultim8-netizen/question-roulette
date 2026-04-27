@@ -58,6 +58,21 @@ export type PendingQuestion = {
   proposedBy: PlayerSlot
 }
 
+/**
+ * A single message in a per-question thread.
+ * Persisted in the room_messages table; broadcast via MESSAGE_SENT realtime event.
+ * Scoped to (room_id, question_index) — one thread per drawn card.
+ */
+export type Message = {
+  id: string
+  room_id: string
+  question_index: number
+  player: PlayerSlot
+  player_name: string
+  content: string
+  created_at: string
+}
+
 export type Room = {
   id: string
   player1_name: string
@@ -82,6 +97,23 @@ export type RoomEvent =
   | { type: 'QUESTION_PROPOSED'; proposedBy: PlayerSlot; text: string; tier: QuestionTier }
   | { type: 'QUESTION_ACCEPTED'; questionIndex: number; text: string; tier: QuestionTier }
   | { type: 'QUESTION_DECLINED'; proposedBy: PlayerSlot }
+  /**
+   * Broadcast whenever a player sends a message in the per-question thread.
+   * The sender writes to DB first (via POST /api/messages), then broadcasts this
+   * so the other player sees the message without polling.
+   * The sender applies an optimistic local update and does not re-process this event.
+   */
+  | {
+      type: 'MESSAGE_SENT'
+      questionIndex: number
+      player: PlayerSlot
+      playerName: string
+      content: string
+      /** UUID from the room_messages row — lets the receiver deduplicate if needed. */
+      messageId: string
+      /** ISO 8601 timestamp from the DB row. */
+      createdAt: string
+    }
 
 /**
  * A question card that has been drawn and exists in both clients' state.

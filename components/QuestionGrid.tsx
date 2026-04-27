@@ -55,7 +55,8 @@ function MiniCard({ card, index }: { card: DrawnCard; index: number }) {
         className="mc-card relative overflow-hidden rounded-2xl cursor-pointer select-none active:scale-[0.97] transition-transform"
         style={{
           animationDelay: entranceDelay,
-          height: 180,
+          /* ── KEY CHANGE: tall portrait rectangle instead of near-square ── */
+          height: 260,
           background: revealed
             ? 'linear-gradient(160deg, #0b0c12 0%, #080810 100%)'
             : `linear-gradient(150deg, ${conf.midBg} 0%, ${conf.darkBg} 100%)`,
@@ -86,10 +87,9 @@ function MiniCard({ card, index }: { card: DrawnCard; index: number }) {
               background: `radial-gradient(ellipse at 50% 50%, transparent 35%, ${conf.darkBg}cc 100%)`,
             }} />
 
-            {/* Center: tier symbol + label */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+            {/* Center: tier symbol + label — more vertical breathing room */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
               <div style={{ opacity: 0.65 }}>
-                {/* Inline mini SVG symbol per tier */}
                 <MiniTierSymbol tier={card.tier} color={conf.primary} />
               </div>
               <span
@@ -106,9 +106,9 @@ function MiniCard({ card, index }: { card: DrawnCard; index: number }) {
               </span>
             </div>
 
-            {/* Tap hint */}
+            {/* Tap hint — sits higher off the bottom edge on the taller card */}
             <div
-              className="mc-font-sans absolute bottom-3 left-0 right-0 flex justify-center"
+              className="mc-font-sans absolute bottom-4 left-0 right-0 flex justify-center"
               style={{ color: `${conf.primary}45`, fontSize: '0.58rem', letterSpacing: '0.08em' }}
             >
               tap
@@ -123,19 +123,19 @@ function MiniCard({ card, index }: { card: DrawnCard; index: number }) {
             <div style={{
               height: 2, borderRadius: 1, flexShrink: 0,
               background: `linear-gradient(90deg, ${conf.primary}, ${conf.secondary ?? conf.primary}55)`,
-              marginBottom: 10,
+              marginBottom: 12,
             }} />
 
-            {/* Question text */}
+            {/* Question text — more room to breathe on the taller card */}
             <p
               className="mc-font-serif flex-1 overflow-hidden"
               style={{
                 color: '#dde4ed',
-                fontSize: '0.82rem',
+                fontSize: '0.88rem',
                 fontWeight: 500,
-                lineHeight: 1.55,
+                lineHeight: 1.6,
                 display: '-webkit-box',
-                WebkitLineClamp: 5,
+                WebkitLineClamp: 7,
                 WebkitBoxOrient: 'vertical',
                 overflow: 'hidden',
               } as React.CSSProperties}
@@ -144,7 +144,7 @@ function MiniCard({ card, index }: { card: DrawnCard; index: number }) {
             </p>
 
             {/* Footer */}
-            <div className="mc-font-sans flex items-center justify-between mt-2" style={{ flexShrink: 0 }}>
+            <div className="mc-font-sans flex items-center justify-between mt-3" style={{ flexShrink: 0 }}>
               <span style={{ color: `${conf.primary}70`, fontSize: '0.58rem', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
                 {conf.label}
               </span>
@@ -161,7 +161,7 @@ function MiniCard({ card, index }: { card: DrawnCard; index: number }) {
 
 // Minimal inline SVG per tier — no ID conflicts, purely decorative
 function MiniTierSymbol({ tier, color }: { tier: QuestionTier; color: string }) {
-  const s = 28
+  const s = 32
   if (tier === 'light') return (
     <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
       {[0, 60, 120, 180, 240, 300].map(deg => (

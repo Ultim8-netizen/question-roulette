@@ -8,10 +8,10 @@ import type { ChannelStatus } from '@/hooks/useRoomChannel'
 // ---------------------------------------------------------------------------
 
 type TurnBannerProps = {
-  currentTurn:  PlayerSlot
-  mySlot:       PlayerSlot
-  player1Name:  string
-  player2Name:  string
+  currentTurn:   PlayerSlot
+  mySlot:        PlayerSlot
+  player1Name:   string
+  player2Name:   string
   channelStatus: ChannelStatus
 }
 
@@ -19,6 +19,44 @@ const STATUS_CONFIG: Record<ChannelStatus, { color: string; label: string; pulse
   connected:    { color: '#4ade80', label: 'Live',       pulse: false },
   connecting:   { color: '#fbbf24', label: 'Connecting', pulse: true  },
   disconnected: { color: '#ef4444', label: 'Offline',    pulse: false },
+}
+
+// ---------------------------------------------------------------------------
+// Abyssprotocol sigil — inline SVG, reused across components
+// ---------------------------------------------------------------------------
+
+function AbyssSignil({ size = 10, opacity = 0.18 }: { size?: number; opacity?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 32 32"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+      style={{ opacity, flexShrink: 0 }}
+    >
+      <circle
+        cx="16"
+        cy="16"
+        r="9"
+        stroke="#c8d0de"
+        strokeWidth="1.4"
+        strokeDasharray="22 6"
+        strokeDashoffset="3"
+      />
+      <line
+        x1="16"
+        y1="4"
+        x2="16"
+        y2="28"
+        stroke="#c8d0de"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+      <circle cx="16" cy="16" r="2" fill="#c8d0de" />
+    </svg>
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -65,7 +103,7 @@ export function TurnBanner({
         .tb-root       { font-family: 'DM Sans', system-ui, sans-serif; animation: tb-enter 0.4s cubic-bezier(0.22,1,0.36,1) both; }
         .tb-active     { animation: tb-glow-ring 3s ease-in-out infinite; }
         .tb-orb-active { animation: tb-orb-breathe 2.8s ease-in-out infinite; }
-        .tb-dot-1      { animation: tb-dot-wave 1.3s ease-in-out 0s   infinite; }
+        .tb-dot-1      { animation: tb-dot-wave 1.3s ease-in-out 0s    infinite; }
         .tb-dot-2      { animation: tb-dot-wave 1.3s ease-in-out 0.18s infinite; }
         .tb-dot-3      { animation: tb-dot-wave 1.3s ease-in-out 0.36s infinite; }
         .tb-status-pulse { animation: tb-status-blink 1.4s ease-in-out infinite; }
@@ -106,7 +144,6 @@ export function TurnBanner({
             }}
           >
             {isMyTurn ? (
-              /* Stylised draw icon: stacked cards */
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                 <rect x="2"  y="4"  width="10" height="13" rx="1.8" fill="rgba(0,0,0,0.35)" stroke="rgba(255,255,255,0.55)" strokeWidth="0.9"/>
                 <rect x="5"  y="2"  width="10" height="13" rx="1.8" fill="rgba(0,0,0,0.25)" stroke="rgba(255,255,255,0.80)" strokeWidth="0.9"/>
@@ -114,7 +151,6 @@ export function TurnBanner({
                 <line x1="8" y1="9.5" x2="12" y2="9.5" stroke="rgba(255,255,255,0.35)" strokeWidth="0.8" strokeLinecap="round"/>
               </svg>
             ) : (
-              /* Hourglass icon */
               <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
                 <path d="M3 1.5h9M3 13.5h9" stroke="rgba(255,255,255,0.4)" strokeWidth="1.2" strokeLinecap="round"/>
                 <path d="M4 1.5 C4 5.5 7.5 7.5 7.5 7.5 C7.5 7.5 11 5.5 11 1.5" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.35)" strokeWidth="0.9"/>
@@ -159,7 +195,6 @@ export function TurnBanner({
                   <span style={{ color: '#94a3b8', fontSize: '0.875rem', fontWeight: 400 }}>
                     {otherName} is deciding
                   </span>
-                  {/* Animated ellipsis */}
                   <div className="flex items-end gap-0.5 pb-px">
                     <span className="tb-dot-1 inline-block w-[3.5px] h-[3.5px] rounded-full" style={{ background: '#475569' }} />
                     <span className="tb-dot-2 inline-block w-[3.5px] h-[3.5px] rounded-full" style={{ background: '#475569' }} />
@@ -171,8 +206,9 @@ export function TurnBanner({
           </div>
         </div>
 
-        {/* Right: connection status */}
-        <div className="flex flex-col items-end gap-1.25">
+        {/* Right: connection status + brand watermark */}
+        <div className="flex flex-col items-end gap-1.5">
+          {/* Connection status */}
           <div className="flex items-center gap-1.5">
             <div
               className={statusConf.pulse ? 'tb-status-pulse' : ''}
@@ -187,6 +223,32 @@ export function TurnBanner({
             />
             <span style={{ color: '#334155', fontSize: '0.7rem', fontWeight: 500 }}>
               {statusConf.label}
+            </span>
+          </div>
+
+          {/* Brand watermark — ghost imprint, barely visible */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              opacity: 0.22,
+              userSelect: 'none',
+              pointerEvents: 'none',
+            }}
+          >
+            <AbyssSignil size={8} opacity={1} />
+            <span
+              style={{
+                fontFamily: "'Geist Mono', ui-monospace, monospace",
+                fontSize: '0.52rem',
+                fontWeight: 400,
+                letterSpacing: '0.16em',
+                color: '#c8d0de',
+                textTransform: 'lowercase',
+              }}
+            >
+              abyssprotocol
             </span>
           </div>
         </div>
