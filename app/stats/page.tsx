@@ -22,6 +22,20 @@ type Stats = {
 }
 
 // ---------------------------------------------------------------------------
+// Pure data helper — NO setState calls here.
+// The useEffect calls this and attaches .then/.catch so that all setState
+// invocations happen asynchronously (inside promise callbacks), never
+// synchronously in the effect body. This is what satisfies the
+// react-hooks/set-state-in-effect rule.
+// ---------------------------------------------------------------------------
+
+async function fetchStatsData(): Promise<Stats> {
+  const res = await fetch('/api/stats')
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<Stats>
+}
+
+// ---------------------------------------------------------------------------
 // Sigil
 // ---------------------------------------------------------------------------
 
@@ -217,33 +231,66 @@ function TrendChart({ trend }: { trend: TrendDay[] }) {
 // ---------------------------------------------------------------------------
 
 export default function StatsPage() {
+  // loading starts true so the skeleton shows before the first fetch resolves.
+  // We never call setLoading(true) inside the useEffect — only in handleRefresh
+  // (which runs outside any effect body).
   const [stats,       setStats]       = useState<Stats | null>(null)
   const [loading,     setLoading]     = useState(true)
   const [error,       setError]       = useState<string | null>(null)
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
 
-  // FIX 1: wrap in useCallback so the function reference is stable.
-  // useEffect then lists it as a dependency — this satisfies
-  // react-hooks/set-state-in-effect, which objects to setState being
-  // called synchronously in the effect body rather than inside a
-  // stable, memoised callback.
-  const load = useCallback(async () => {
+  // ---------------------------------------------------------------------------
+  // Initial load — useEffect.
+  //
+  // The rule react-hooks/set-state-in-effect flags setState calls made
+  // *synchronously* inside the effect body.  The fix is to ensure every
+  // setState call happens inside a .then() / .catch() callback, which the
+  // JS engine executes asynchronously (after the microtask resolves) — never
+  // in the synchronous body of the effect.
+  //
+  // fetchStatsData() is a module-level pure helper that only fetches and
+  // returns data; it contains zero setState calls, so calling it here is safe.
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    let cancelled = false
+
+    fetchStatsData()
+      .then(data => {
+        if (cancelled) return
+        setStats(data)
+        setLastRefresh(new Date())
+        setLoading(false)
+      })
+      .catch(() => {
+        if (cancelled) return
+        setError('Could not load stats. Check your Supabase connection.')
+        setLoading(false)
+      })
+
+    // Cleanup: ignore the response if the component unmounts mid-flight.
+    return () => { cancelled = true }
+  }, []) // empty deps — runs once on mount, which is the correct behaviour
+
+  // ---------------------------------------------------------------------------
+  // Manual refresh — triggered by the button, NOT from inside an effect.
+  // Calling setState synchronously here is perfectly fine.
+  // ---------------------------------------------------------------------------
+  const handleRefresh = useCallback(() => {
     setLoading(true)
     setError(null)
-    try {
-      const res = await fetch('/api/stats')
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data: Stats = await res.json()
-      setStats(data)
-      setLastRefresh(new Date())
-    } catch {
-      setError('Could not load stats. Check your Supabase connection.')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
 
-  useEffect(() => { load() }, [load])
+    fetchStatsData()
+      .then(data => {
+        setStats(data)
+        setLastRefresh(new Date())
+      })
+      .catch(() => {
+        setError('Could not load stats. Check your Supabase connection.')
+      })
+      .finally(() => {
+        setLoading(false)
+      })
+  }, [])
 
   // Week-over-week delta label
   const weekDelta = stats
@@ -328,21 +375,21 @@ export default function StatsPage() {
               </span>
             )}
 
-            {/* Refresh */}
+            {/* Refresh — calls handleRefresh, not load */}
             <button
-              onClick={load}
+              onClick={handleRefresh}
               disabled={loading}
               title="Refresh"
               style={{
-                background:  'none',
-                border:      '1px solid rgba(255,255,255,0.07)',
+                background:   'none',
+                border:       '1px solid rgba(255,255,255,0.07)',
                 borderRadius: 8,
-                padding:     '5px 10px',
-                cursor:      loading ? 'default' : 'pointer',
-                color:       '#334155',
-                fontSize:    '0.80rem',
-                lineHeight:  1,
-                transition:  'border-color 0.2s ease, color 0.2s ease',
+                padding:      '5px 10px',
+                cursor:       loading ? 'default' : 'pointer',
+                color:        '#334155',
+                fontSize:     '0.80rem',
+                lineHeight:   1,
+                transition:   'border-color 0.2s ease, color 0.2s ease',
               }}
               onMouseEnter={e => {
                 if (!loading) {
@@ -365,7 +412,6 @@ export default function StatsPage() {
               ) : '↻'}
             </button>
 
-            {/* FIX 2: <a href="/"> replaced with Next.js <Link href="/"> */}
             <Link
               href="/"
               style={{

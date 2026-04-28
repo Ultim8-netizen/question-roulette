@@ -60,6 +60,34 @@ export const TIER_CONFIG = {
 }>
 
 // ---------------------------------------------------------------------------
+// Watermark helper
+// Encodes the player's name into a repeating SVG background so any
+// screenshot carries an attribution trail. Opacity is kept very low
+// (~4%) so it is invisible during normal use but captured by screenshotters.
+// Note: OS-level screen recording cannot be prevented from a browser.
+// ---------------------------------------------------------------------------
+
+function makeWatermarkBg(name: string): string {
+  const text = `${name} · abyssprotocol`
+  const svg = [
+    '<svg xmlns="http://www.w3.org/2000/svg" width="240" height="90">',
+    '<text x="120" y="45"',
+    ' font-family="monospace" font-size="9"',
+    ' fill="rgba(200,208,222,0.04)"',
+    ' text-anchor="middle"',
+    ' dominant-baseline="middle"',
+    ` transform="rotate(-22 120 45)">${text}</text>`,
+    '</svg>',
+  ].join('')
+  // btoa is safe here — names are ASCII-range (capped at 32 chars)
+  try {
+    return `url("data:image/svg+xml;base64,${btoa(svg)}")`
+  } catch {
+    return 'none'
+  }
+}
+
+// ---------------------------------------------------------------------------
 // SVG card-back patterns
 // ---------------------------------------------------------------------------
 
@@ -198,6 +226,7 @@ type PickModalProps = {
   tier:             QuestionTier
   isCustom:         boolean
   drawnByName:      string
+  /** True when this client drew the card. Drives copy and reveal hint. */
   isMyDraw:         boolean
   onClose:          () => void
   // Messaging
@@ -207,15 +236,17 @@ type PickModalProps = {
   messages:         Message[]
   onSendMessage:    (content: string) => Promise<void>
   isSendingMessage: boolean
+  /** Forwarded to MessageThread — fires throttled TYPING broadcast. */
+  onTyping:         () => void
+  /** True when the other player is typing in this thread right now. */
+  isOtherTyping:    boolean
 }
 
 /**
  * Two-phase reveal:
- *  Phase 1 — "flipping":  CSS 3D rotateY plays (0 → 720ms). Fixed 340px height.
+ *  Phase 1 — "flipping":  CSS 3D rotateY plays (0 to 720ms). Fixed 340px height.
  *  Phase 2 — "revealed":  Flat card replaces the flip container. Height is flexible
  *                          to accommodate the MessageThread below the question text.
- *
- * This avoids fighting CSS 3D transforms with dynamic content height.
  */
 type TapState = 'idle' | 'flipping' | 'revealed'
 
@@ -232,17 +263,30 @@ export function PickModal({
   messages,
   onSendMessage,
   isSendingMessage,
+  onTyping,
+  isOtherTyping,
 }: PickModalProps) {
   const [tapState, setTapState] = useState<TapState>('idle')
   const conf    = TIER_CONFIG[tier]
   const Pattern = PATTERNS[tier]
 
+  // Watermark background — encodes the local player's name into a repeating
+  // SVG tiled behind the question text. Invisible at normal viewing distance
+  // but captured in screenshots.
+  const watermarkBg = makeWatermarkBg(myName)
+
   function handleTap() {
     if (tapState !== 'idle') return
     setTapState('flipping')
-    // Switch to flat layout after flip animation completes.
     setTimeout(() => setTapState('revealed'), 740)
   }
+
+  // Contextual copy depending on who drew the card.
+  const attributionLabel = isMyDraw ? 'Your draw' : `${drawnByName}'s draw`
+  const tapHintLabel     = isMyDraw
+    ? 'tap to reveal your question'
+    : `tap to see ${drawnByName}'s card`
+  const taglineOverride  = isMyDraw ? conf.tagline : `from ${drawnByName}`
 
   return (
     <>
@@ -292,15 +336,22 @@ export function PickModal({
 
         .pm-font-serif { font-family: 'Cormorant Garamond', Georgia, serif; }
         .pm-font-sans  { font-family: 'DM Sans', system-ui, sans-serif; }
+
+        /* Prevent text selection on revealed question text to deter copy/paste. */
+        .pm-no-select {
+          -webkit-user-select: none;
+          -moz-user-select: none;
+          user-select: none;
+        }
       `}</style>
 
       {/* Backdrop */}
       <div
         className="pm-backdrop pm-font-sans fixed inset-0 z-50 flex items-end justify-center px-4 pb-6"
         style={{
-          background: 'rgba(2,2,6,0.88)',
-          backdropFilter: 'blur(8px)',
-          overflowY: tapState === 'revealed' ? 'auto' : 'hidden',
+          background:    'rgba(2,2,6,0.88)',
+          backdropFilter:'blur(8px)',
+          overflowY:     tapState === 'revealed' ? 'auto' : 'hidden',
         }}
         onClick={e => {
           if (tapState === 'revealed' && e.target === e.currentTarget) onClose()
@@ -313,7 +364,7 @@ export function PickModal({
             <div className="flex items-center gap-2">
               <div style={{ width: 6, height: 6, borderRadius: '50%', background: conf.primary, boxShadow: `0 0 8px ${conf.primary}` }} />
               <span style={{ color: '#64748b', fontSize: '0.78rem', fontWeight: 400 }}>
-                {isMyDraw ? 'Your card' : `${drawnByName}'s card`}
+                {attributionLabel}
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -333,14 +384,14 @@ export function PickModal({
             <div style={{ height: 340, perspective: '1400px' }}>
               <div
                 style={{
-                  position: 'absolute', inset: 0,
+                  position:       'absolute', inset: 0,
                   transformStyle: 'preserve-3d',
-                  transition: 'transform 0.72s cubic-bezier(0.4,0.0,0.2,1)',
-                  transform: tapState === 'flipping' ? 'rotateY(180deg)' : 'rotateY(0deg)',
-                  cursor: tapState === 'idle' ? 'pointer' : 'default',
-                  borderRadius: 22,
-                  width: '100%',
-                  height: 340,
+                  transition:     'transform 0.72s cubic-bezier(0.4,0.0,0.2,1)',
+                  transform:      tapState === 'flipping' ? 'rotateY(180deg)' : 'rotateY(0deg)',
+                  cursor:         tapState === 'idle' ? 'pointer' : 'default',
+                  borderRadius:   22,
+                  width:          '100%',
+                  height:         340,
                 }}
                 onClick={handleTap}
               >
@@ -348,12 +399,12 @@ export function PickModal({
                 <div
                   className="absolute inset-0 overflow-hidden"
                   style={{
-                    borderRadius: 22,
-                    backfaceVisibility: 'hidden',
+                    borderRadius:             22,
+                    backfaceVisibility:       'hidden',
                     WebkitBackfaceVisibility: 'hidden',
-                    background: `linear-gradient(150deg, ${conf.midBg} 0%, ${conf.darkBg} 100%)`,
-                    border: `1.5px solid ${conf.border}`,
-                    boxShadow: `0 24px 64px ${conf.glow}, 0 0 0 1px rgba(255,255,255,0.03)`,
+                    background:               `linear-gradient(150deg, ${conf.midBg} 0%, ${conf.darkBg} 100%)`,
+                    border:                   `1.5px solid ${conf.border}`,
+                    boxShadow:                `0 24px 64px ${conf.glow}, 0 0 0 1px rgba(255,255,255,0.03)`,
                   }}
                 >
                   <Pattern color={conf.primary} />
@@ -370,7 +421,7 @@ export function PickModal({
                       <TierSymbol tier={tier} color={conf.primary} size={52} />
                     </div>
                     <span className="pm-font-serif" style={{ color: `${conf.primary}90`, fontSize: '0.85rem', fontWeight: 500, letterSpacing: '0.08em', fontStyle: 'italic' }}>
-                      {conf.tagline}
+                      {taglineOverride}
                     </span>
                   </div>
                   <div className="pm-tap-hint absolute bottom-0 left-0 right-0 flex justify-center pb-6 pointer-events-none">
@@ -381,7 +432,7 @@ export function PickModal({
                         <rect x="5" y="10" width="14" height="12" rx="3" stroke={conf.primary} strokeWidth="1.5" opacity="0.55"/>
                       </svg>
                       <span className="pm-font-sans" style={{ color: `${conf.primary}70`, fontSize: '0.72rem', fontWeight: 400, letterSpacing: '0.08em' }}>
-                        tap to reveal
+                        {tapHintLabel}
                       </span>
                     </div>
                   </div>
@@ -389,19 +440,29 @@ export function PickModal({
 
                 {/* Back face — visible during flip animation only */}
                 <div
-                  className="absolute inset-0 flex flex-col"
+                  className="absolute inset-0 flex flex-col pm-no-select"
                   style={{
-                    borderRadius: 22,
-                    backfaceVisibility: 'hidden',
+                    borderRadius:             22,
+                    backfaceVisibility:       'hidden',
                     WebkitBackfaceVisibility: 'hidden',
-                    transform: 'rotateY(180deg)',
-                    background: 'linear-gradient(160deg, #0b0c12 0%, #080810 100%)',
-                    border: `1.5px solid ${conf.border}`,
-                    boxShadow: `0 24px 64px ${conf.glow}, 0 0 0 1px rgba(255,255,255,0.03)`,
-                    padding: '28px 26px 24px',
-                    overflow: 'hidden',
+                    transform:                'rotateY(180deg)',
+                    background:               'linear-gradient(160deg, #0b0c12 0%, #080810 100%)',
+                    border:                   `1.5px solid ${conf.border}`,
+                    boxShadow:                `0 24px 64px ${conf.glow}, 0 0 0 1px rgba(255,255,255,0.03)`,
+                    padding:                  '28px 26px 24px',
+                    overflow:                 'hidden',
                   }}
                 >
+                  {/* Watermark layer */}
+                  <div
+                    aria-hidden="true"
+                    style={{
+                      position:        'absolute', inset: 0,
+                      backgroundImage: watermarkBg,
+                      backgroundSize:  '240px 90px',
+                      pointerEvents:   'none',
+                    }}
+                  />
                   <div className="pm-bar-in" style={{ height: 3, borderRadius: 2, background: `linear-gradient(90deg, ${conf.primary}, ${conf.secondary}88)`, marginBottom: 24, flexShrink: 0 }} />
                   <div className="pm-text-in flex-1 flex items-center">
                     <p className="pm-font-serif" style={{ color: '#f0f4f8', fontSize: '1.22rem', fontWeight: 500, lineHeight: 1.62, letterSpacing: '0.01em' }}>
@@ -416,57 +477,83 @@ export function PickModal({
           {/* ── PHASE 2: Flat revealed card with message thread ── */}
           {tapState === 'revealed' && (
             <div
-              className="pm-flat-in"
+              className="pm-flat-in pm-no-select"
               style={{
+                position:   'relative',
                 borderRadius: 22,
                 background: 'linear-gradient(160deg, #0b0c12 0%, #080810 100%)',
-                border: `1.5px solid ${conf.border}`,
-                boxShadow: `0 24px 64px ${conf.glow}, 0 0 0 1px rgba(255,255,255,0.03)`,
-                padding: '28px 26px 24px',
+                border:     `1.5px solid ${conf.border}`,
+                boxShadow:  `0 24px 64px ${conf.glow}, 0 0 0 1px rgba(255,255,255,0.03)`,
+                padding:    '28px 26px 24px',
+                overflow:   'hidden',
               }}
             >
-              {/* Accent bar */}
+              {/* Watermark layer — visible in screenshots, invisible at normal use */}
               <div
-                className="pm-bar-in"
+                aria-hidden="true"
                 style={{
-                  height: 3,
-                  borderRadius: 2,
-                  background: `linear-gradient(90deg, ${conf.primary}, ${conf.secondary}88)`,
-                  marginBottom: 24,
+                  position:        'absolute', inset: 0,
+                  backgroundImage: watermarkBg,
+                  backgroundSize:  '240px 90px',
+                  pointerEvents:   'none',
+                  zIndex:          0,
                 }}
               />
 
-              {/* Question text */}
-              <div className="pm-text-in">
-                <p className="pm-font-serif" style={{ color: '#f0f4f8', fontSize: '1.22rem', fontWeight: 500, lineHeight: 1.62, letterSpacing: '0.01em', marginBottom: 0 }}>
-                  {questionText}
-                </p>
-              </div>
+              {/* Content sits above the watermark */}
+              <div style={{ position: 'relative', zIndex: 1 }}>
+                {/* Accent bar */}
+                <div
+                  className="pm-bar-in"
+                  style={{
+                    height:       3,
+                    borderRadius: 2,
+                    background:   `linear-gradient(90deg, ${conf.primary}, ${conf.secondary}88)`,
+                    marginBottom: 24,
+                  }}
+                />
 
-              {/* Tier + custom footer */}
-              <div className="flex items-center justify-between mt-4 mb-0">
-                <div className="flex items-center gap-2">
-                  <TierSymbol tier={tier} color={conf.primary} size={14} />
-                  <span className="pm-font-sans" style={{ color: `${conf.primary}70`, fontSize: '0.65rem', fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
-                    {conf.label}
-                  </span>
+                {/* Question text */}
+                <div className="pm-text-in">
+                  <p className="pm-font-serif" style={{ color: '#f0f4f8', fontSize: '1.22rem', fontWeight: 500, lineHeight: 1.62, letterSpacing: '0.01em', marginBottom: 0 }}>
+                    {questionText}
+                  </p>
                 </div>
-                {isCustom && (
-                  <span className="pm-font-sans" style={{ color: '#334155', fontSize: '0.68rem' }}>
-                    custom question
-                  </span>
-                )}
-              </div>
 
-              {/* Inline message thread */}
-              <MessageThread
-                messages={messages}
-                mySlot={mySlot}
-                myName={myName}
-                onSend={onSendMessage}
-                isSending={isSendingMessage}
-                accentColor={conf.primary}
-              />
+                {/* Context note for the non-drawer */}
+                {!isMyDraw && (
+                  <p className="pm-font-sans" style={{ color: '#334155', fontSize: '0.70rem', marginTop: 10, lineHeight: 1.55 }}>
+                    {drawnByName} drew this card. Both of you can respond below.
+                  </p>
+                )}
+
+                {/* Tier + custom footer */}
+                <div className="flex items-center justify-between mt-4 mb-0">
+                  <div className="flex items-center gap-2">
+                    <TierSymbol tier={tier} color={conf.primary} size={14} />
+                    <span className="pm-font-sans" style={{ color: `${conf.primary}70`, fontSize: '0.65rem', fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+                      {conf.label}
+                    </span>
+                  </div>
+                  {isCustom && (
+                    <span className="pm-font-sans" style={{ color: '#334155', fontSize: '0.68rem' }}>
+                      custom question
+                    </span>
+                  )}
+                </div>
+
+                {/* Inline message thread */}
+                <MessageThread
+                  messages={messages}
+                  mySlot={mySlot}
+                  myName={myName}
+                  onSend={onSendMessage}
+                  isSending={isSendingMessage}
+                  accentColor={conf.primary}
+                  onTyping={onTyping}
+                  isOtherTyping={isOtherTyping}
+                />
+              </div>
             </div>
           )}
 
@@ -475,10 +562,10 @@ export function PickModal({
             <button
               className="pm-btn-in pm-font-sans mt-4 w-full rounded-2xl text-sm font-medium tracking-wide transition-opacity active:opacity-60"
               style={{
-                padding: '15px 0',
+                padding:    '15px 0',
                 background: `linear-gradient(135deg, ${conf.midBg}, ${conf.darkBg})`,
-                border: `1px solid ${conf.border}`,
-                color: conf.textLight,
+                border:     `1px solid ${conf.border}`,
+                color:      conf.textLight,
                 letterSpacing: '0.04em',
               }}
               onClick={onClose}

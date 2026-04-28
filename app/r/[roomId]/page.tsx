@@ -489,7 +489,7 @@ function WaitingScreen({ shareUrl }: { shareUrl: string }) {
 // ---------------------------------------------------------------------------
 
 type PickState = {
-  questionIndex: number   // added: needed to scope message thread
+  questionIndex: number
   questionText:  string
   tier:          QuestionTier
   isCustom:      boolean
@@ -522,9 +522,15 @@ export default function RoomPage() {
   const [toast, setToast] = useState<string | null>(null)
 
   // Messaging state — scoped to the currently open pick modal.
-  // Cleared whenever activePick changes (new card drawn / modal closed).
   const [messages,         setMessages]         = useState<Message[]>([])
   const [isSendingMessage, setIsSendingMessage] = useState(false)
+
+  // TYPING indicator state — tracks whether the other player is typing.
+  const [otherIsTyping,    setOtherIsTyping]    = useState(false)
+  const [otherTypingIndex, setOtherTypingIndex] = useState<number | null>(null)
+
+  // Ref to hold the auto-clear timeout for typing indicator.
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Stable refs to avoid stale closures inside useCallback
   const roomRef          = useRef<Room | null>(null)
@@ -534,6 +540,16 @@ export default function RoomPage() {
   useEffect(() => { roomRef.current       = room       }, [room])
   useEffect(() => { mySlotRef.current     = mySlot     }, [mySlot])
   useEffect(() => { activePickRef.current = activePick }, [activePick])
+
+  // ── Message loader — fetches persisted messages for a card thread ─────────
+  async function loadMessagesForCard(questionIndex: number) {
+    const res = await fetch(
+      `/api/messages?roomId=${roomId}&questionIndex=${questionIndex}`
+    )
+    if (!res.ok) return
+    const data = await res.json()
+    setMessages(data.messages ?? [])
+  }
 
   // ── Realtime event handler ───────────────────────────────────────────────
   const handleEvent = useCallback((event: RoomEvent) => {
@@ -551,23 +567,35 @@ export default function RoomPage() {
         ? (r.player1_name ?? 'Player 1')
         : (r.player2_name ?? 'Player 2')
 
+      // Push card to grid for both players.
       setCards(prev => [...prev, {
-        key:          `${event.questionIndex}-${Date.now()}`,
-        questionText: event.questionText,
-        tier:         event.tier,
-        isCustom:     event.isCustom,
-        drawnByName,
-      }])
-
-      setMessages([])
-      setActivePick({
+        key:           `${event.questionIndex}-${Date.now()}`,
         questionIndex: event.questionIndex,
         questionText:  event.questionText,
         tier:          event.tier,
         isCustom:      event.isCustom,
         drawnByName,
-        isMyDraw:      event.player === mySlotRef.current,
-      })
+        drawnByMe:     false, // this branch is always the OTHER player's draw event
+      }])
+
+      // Auto-open modal ONLY for the player who drew the card.
+      // The non-drawer sees a toast and opens the card by tapping the grid.
+      if (event.player === mySlotRef.current) {
+        // Safety guard: sender handles their own draw in handleDraw,
+        // so this branch should rarely be hit, but handle it correctly.
+        setMessages([])
+        setActivePick({
+          questionIndex: event.questionIndex,
+          questionText:  event.questionText,
+          tier:          event.tier,
+          isCustom:      event.isCustom,
+          drawnByName,
+          isMyDraw:      true,
+        })
+      } else {
+        // Non-drawer: informational toast only — they tap the card when ready.
+        setToast(`${drawnByName} drew a card — tap it to read and respond`)
+      }
     }
 
     if (event.type === 'TURN_ADVANCED') {
@@ -609,6 +637,32 @@ export default function RoomPage() {
         }])
       }
     }
+
+    if (event.type === 'TYPING') {
+      // Only show indicator if the other player is typing in the currently open card.
+      const current = activePickRef.current
+      if (current && event.questionIndex === current.questionIndex) {
+        setOtherIsTyping(true)
+        setOtherTypingIndex(event.questionIndex)
+        // Auto-clear after 3 s without a new TYPING event.
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+        typingTimeoutRef.current = setTimeout(() => {
+          setOtherIsTyping(false)
+          setOtherTypingIndex(null)
+        }, 3000)
+      }
+    }
+
+    if (event.type === 'CARD_CLOSED') {
+      const current = activePickRef.current
+      if (current && event.questionIndex === current.questionIndex) {
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+        setOtherIsTyping(false)
+        setActivePick(null)
+        setMessages([])
+        setToast('Card closed')
+      }
+    }
   }, [roomId])
 
   const { sendEvent, status } = useRoomChannel({
@@ -629,13 +683,38 @@ export default function RoomPage() {
         .eq('id', roomId)
         .single()
 
-      if (error || !data) return
+      if (error || !data) {
+        console.error('[load] failed to fetch room:', error)
+        return
+      }
 
       const r = data as Room
       setRoom(r)
       setCurrentTurn(r.current_turn)
       setHasBothPlayers(!!r.player2_name)
       if (r.pending_question) setPendingProposal(r.pending_question)
+
+      // Reconstruct drawn cards from persisted indices so both players are
+      // back in sync after a page refresh.
+      if (r.drawn_indices && r.drawn_indices.length > 0 && r.question_pool) {
+        const reconstructed: DrawnCard[] = r.drawn_indices.map((qi: number, position: number) => {
+          const q = r.question_pool[qi]
+          if (!q) return null
+          return {
+            key:           `${qi}-${position}`,
+            questionIndex: qi,
+            questionText:  q.text,
+            tier:          q.tier,
+            isCustom:      q.isCustom,
+            // On reconstruction we don't know who drew which card, so attribute
+            // to player 1 by name. drawnByName is display-only in the grid.
+            drawnByName:   r.player1_name,
+            drawnByMe:     false,
+          }
+        }).filter(Boolean) as DrawnCard[]
+        setCards(reconstructed)
+      }
+      // Do NOT reopen activePick on refresh — modal never auto-opens on load.
 
       const stored = sessionStorage.getItem(`f9q-slot-${roomId}`)
       if (stored === '1') {
@@ -652,7 +731,7 @@ export default function RoomPage() {
       }
     }
 
-    load()
+    void load()
   }, [roomId])
 
   // ── Join ─────────────────────────────────────────────────────────────────
@@ -699,15 +778,46 @@ export default function RoomPage() {
     const drawnByName = mySlot === 1 ? r.player1_name : (r.player2_name ?? 'Player 2')
 
     setCurrentTurn(nextTurn)
+    // Push with new shape — drawnByMe: true because this is the local player's draw.
     setCards(prev => [...prev, {
-      key: `${questionIndex}-${Date.now()}`,
-      questionText, tier, isCustom, drawnByName,
+      key:           `${questionIndex}-${Date.now()}`,
+      questionIndex,
+      questionText,
+      tier,
+      isCustom,
+      drawnByName,
+      drawnByMe:     true,
     }])
     setMessages([])
     setActivePick({ questionIndex, questionText, tier, isCustom, drawnByName, isMyDraw: true })
 
     await sendEvent({ type: 'QUESTION_DRAWN', player: mySlot, questionIndex, questionText, tier, isCustom })
     await sendEvent({ type: 'TURN_ADVANCED', nextTurn })
+  }
+
+  // ── Open card from grid ───────────────────────────────────────────────────
+  function handleOpenCard(card: DrawnCard) {
+    setMessages([])
+    setActivePick({
+      questionIndex: card.questionIndex,
+      questionText:  card.questionText,
+      tier:          card.tier,
+      isCustom:      card.isCustom,
+      drawnByName:   card.drawnByName,
+      isMyDraw:      card.drawnByMe,
+    })
+    // Fire-and-forget — load persisted message history for this card's thread.
+    void loadMessagesForCard(card.questionIndex)
+  }
+
+  // ── Typing broadcast ──────────────────────────────────────────────────────
+  async function handleTyping() {
+    if (!mySlot || !activePick) return
+    await sendEvent({
+      type:          'TYPING',
+      questionIndex: activePick.questionIndex,
+      player:        mySlot,
+    })
   }
 
   // ── Propose ───────────────────────────────────────────────────────────────
@@ -929,7 +1039,7 @@ export default function RoomPage() {
 
         <div style={{ height: 16 }} />
 
-        <QuestionGrid cards={cards} />
+        <QuestionGrid cards={cards} onOpen={handleOpenCard} />
 
         <div style={{ paddingBottom: 8 }}>
           <BrandWatermark />
@@ -945,7 +1055,7 @@ export default function RoomPage() {
         onPropose={() => setProposeOpen(true)}
       />
 
-      {/* Pick modal — now includes messaging */}
+      {/* Pick modal — includes messaging, typing indicator, and card-close sync */}
       {activePick && (
         <PickModal
           questionText={activePick.questionText}
@@ -953,13 +1063,24 @@ export default function RoomPage() {
           isCustom={activePick.isCustom}
           drawnByName={activePick.drawnByName}
           isMyDraw={activePick.isMyDraw}
-          onClose={() => { setActivePick(null); setMessages([]) }}
+          onClose={async () => {
+            // Broadcast CARD_CLOSED before clearing local state so the other
+            // player's modal is dismissed first.
+            await sendEvent({ type: 'CARD_CLOSED', questionIndex: activePick.questionIndex })
+            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+            setOtherIsTyping(false)
+            setOtherTypingIndex(null)
+            setActivePick(null)
+            setMessages([])
+          }}
           questionIndex={activePick.questionIndex}
           mySlot={mySlot ?? 1}
           myName={myName}
           messages={messages}
           onSendMessage={handleSendMessage}
           isSendingMessage={isSendingMessage}
+          onTyping={handleTyping}
+          isOtherTyping={otherIsTyping && otherTypingIndex === activePick.questionIndex}
         />
       )}
 

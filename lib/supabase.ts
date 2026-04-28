@@ -114,6 +114,25 @@ export type RoomEvent =
       /** ISO 8601 timestamp from the DB row. */
       createdAt: string
     }
+  /**
+   * Broadcast while a player is composing a message in the thread for a
+   * specific question. Throttled to one event per 1 500 ms on the sender side.
+   * The receiver auto-clears the indicator after 3 s without a new event.
+   */
+  | {
+      type: 'TYPING'
+      questionIndex: number
+      player: PlayerSlot
+    }
+  /**
+   * Broadcast when a player closes the PickModal for a specific question.
+   * Forces the other player's modal for that same question to close so
+   * both clients stay in sync.
+   */
+  | {
+      type: 'CARD_CLOSED'
+      questionIndex: number
+    }
 
 /**
  * A question card that has been drawn and exists in both clients' state.

@@ -5,32 +5,58 @@ import type { QuestionTier } from '@/lib/supabase'
 import { TIER_CONFIG } from '@/components/PickModal'
 
 // ---------------------------------------------------------------------------
-// Types — exported so the parent page (app/r/[roomId]/page.tsx) can build
-// the array correctly from incoming Realtime events.
+// Types — exported so page.tsx can build the array correctly.
+// questionIndex is required so onOpen can restore the full PickModal state.
 // ---------------------------------------------------------------------------
 
 export type DrawnCard = {
-  key:          string        // unique ID per draw (e.g. `${questionIndex}-${Date.now()}`)
-  questionText: string
-  tier:         QuestionTier
-  isCustom:     boolean
-  drawnByName:  string
+  key:           string        // unique render key: `${questionIndex}-${Date.now()}`
+  questionIndex: number        // index into room.question_pool — needed for onOpen
+  questionText:  string
+  tier:          QuestionTier
+  isCustom:      boolean
+  drawnByName:   string
+  drawnByMe:     boolean       // true when the local player drew this card
 }
 
 type QuestionGridProps = {
-  cards: DrawnCard[]
+  cards:    DrawnCard[]
+  /**
+   * When provided, tapping a mini card calls onOpen(card) and opens the
+   * full PickModal rather than doing an inline local reveal.
+   * page.tsx always provides this so both players get the modal experience
+   * and can re-open any past card.
+   */
+  onOpen?:  (card: DrawnCard) => void
 }
 
 // ---------------------------------------------------------------------------
-// Individual mini card with its own local reveal state
+// Individual mini card
 // ---------------------------------------------------------------------------
 
-function MiniCard({ card, index }: { card: DrawnCard; index: number }) {
-  const [revealed, setReveal] = useState(false)
-  const conf    = TIER_CONFIG[card.tier]
-
-  // Each card staggers its entrance based on position in the grid.
+function MiniCard({
+  card,
+  index,
+  onOpen,
+}: {
+  card:    DrawnCard
+  index:   number
+  onOpen?: (card: DrawnCard) => void
+}) {
+  // Local reveal is only used when onOpen is NOT provided (fallback).
+  const [localRevealed, setLocalRevealed] = useState(false)
+  const conf          = TIER_CONFIG[card.tier]
   const entranceDelay = `${Math.min(index * 0.06, 0.5)}s`
+
+  function handleTap() {
+    if (onOpen) {
+      onOpen(card)
+    } else {
+      setLocalRevealed(prev => !prev)
+    }
+  }
+
+  const revealed = onOpen ? false : localRevealed
 
   return (
     <>
@@ -43,14 +69,10 @@ function MiniCard({ card, index }: { card: DrawnCard; index: number }) {
           0%   { transform: rotateY(90deg);  opacity: 0; }
           100% { transform: rotateY(0deg);   opacity: 1; }
         }
-        @keyframes mc-flip-out {
-          0%   { transform: rotateY(0deg);   opacity: 1; }
-          100% { transform: rotateY(90deg);  opacity: 0; }
-        }
-        .mc-card { animation: mc-enter 0.4s cubic-bezier(0.22,1,0.36,1) both; }
-        .mc-flip  { animation: mc-flip-in 0.38s cubic-bezier(0.22,1,0.36,1) both; }
-        .mc-font-serif { font-family: 'Cormorant Garamond', Georgia, serif; }
-        .mc-font-sans  { font-family: 'DM Sans', system-ui, sans-serif; }
+        .mc-card      { animation: mc-enter   0.4s cubic-bezier(0.22,1,0.36,1) both; }
+        .mc-flip      { animation: mc-flip-in 0.38s cubic-bezier(0.22,1,0.36,1) both; }
+        .mc-font-serif{ font-family: 'Cormorant Garamond', Georgia, serif; }
+        .mc-font-sans { font-family: 'DM Sans', system-ui, sans-serif; }
       `}</style>
 
       <div
@@ -61,18 +83,19 @@ function MiniCard({ card, index }: { card: DrawnCard; index: number }) {
           background: revealed
             ? 'linear-gradient(160deg, #0b0c12 0%, #080810 100%)'
             : `linear-gradient(150deg, ${conf.midBg} 0%, ${conf.darkBg} 100%)`,
-          border: `1px solid ${conf.border}`,
+          border:    `1px solid ${conf.border}`,
           boxShadow: revealed
             ? `0 4px 20px ${conf.glow}`
             : `0 4px 24px ${conf.glow}, inset 0 1px 0 rgba(255,255,255,0.04)`,
           transition: 'background 0.5s ease, box-shadow 0.5s ease',
         }}
-        onClick={() => setReveal(prev => !prev)}
+        onClick={handleTap}
       >
-        {/* — UNREVEALED STATE — */}
+
+        {/* ── UNREVEALED STATE ── */}
         {!revealed && (
           <>
-            {/* Mini CSS gradient pattern (no SVG ID conflicts) */}
+            {/* Mini CSS gradient pattern */}
             <div className="absolute inset-0 pointer-events-none" style={{
               backgroundImage: card.tier === 'light'
                 ? `repeating-conic-gradient(from 0deg at 50% 50%, transparent 0deg, ${conf.primary}08 3deg, transparent 6deg)`
@@ -96,9 +119,9 @@ function MiniCard({ card, index }: { card: DrawnCard; index: number }) {
               <span
                 className="mc-font-sans"
                 style={{
-                  color: `${conf.primary}80`,
-                  fontSize: '0.60rem',
-                  fontWeight: 600,
+                  color:         `${conf.primary}80`,
+                  fontSize:      '0.60rem',
+                  fontWeight:    600,
                   letterSpacing: '0.14em',
                   textTransform: 'uppercase',
                 }}
@@ -107,51 +130,77 @@ function MiniCard({ card, index }: { card: DrawnCard; index: number }) {
               </span>
             </div>
 
+            {/* Attribution chip */}
+            <div
+              className="mc-font-sans absolute top-3 left-3 right-3 flex items-center justify-between"
+              style={{ gap: 4 }}
+            >
+              <span style={{
+                color:         `${conf.primary}55`,
+                fontSize:      '0.52rem',
+                fontWeight:    600,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+              }}>
+                {card.drawnByMe ? 'you' : card.drawnByName}
+              </span>
+              {card.isCustom && (
+                <span style={{
+                  color:        `${conf.primary}70`,
+                  fontSize:     '0.48rem',
+                  fontWeight:   600,
+                  letterSpacing:'0.10em',
+                  textTransform:'uppercase',
+                  background:   `${conf.primary}10`,
+                  border:       `1px solid ${conf.primary}22`,
+                  borderRadius:  99,
+                  padding:      '1px 6px',
+                }}>
+                  custom
+                </span>
+              )}
+            </div>
+
             {/* Tap hint */}
             <div
               className="mc-font-sans absolute bottom-4 left-0 right-0 flex justify-center"
               style={{ color: `${conf.primary}45`, fontSize: '0.58rem', letterSpacing: '0.08em' }}
             >
-              tap
+              tap to open
             </div>
           </>
         )}
 
-        {/* — REVEALED STATE — */}
+        {/* ── LOCAL REVEAL (fallback only — used when onOpen is not provided) ── */}
         {revealed && (
           <div className="mc-flip absolute inset-0 flex flex-col p-4">
-            {/* Accent line */}
             <div style={{
               height: 2, borderRadius: 1, flexShrink: 0,
               background: `linear-gradient(90deg, ${conf.primary}, ${conf.secondary ?? conf.primary}55)`,
               marginBottom: 12,
             }} />
-
-            {/* Question text */}
             <p
               className="mc-font-serif flex-1 overflow-hidden"
               style={{
-                color: '#dde4ed',
-                fontSize: '0.88rem',
-                fontWeight: 500,
-                lineHeight: 1.6,
-                display: '-webkit-box',
-                WebkitLineClamp: 7,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
+                color:              '#dde4ed',
+                fontSize:           '0.88rem',
+                fontWeight:         500,
+                lineHeight:         1.6,
+                display:            '-webkit-box',
+                WebkitLineClamp:    7,
+                WebkitBoxOrient:    'vertical',
+                overflow:           'hidden',
               } as React.CSSProperties}
             >
               {card.questionText}
             </p>
-
-            {/* Footer */}
             <div className="mc-font-sans flex items-center justify-between mt-3" style={{ flexShrink: 0 }}>
               <span style={{ color: `${conf.primary}70`, fontSize: '0.58rem', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
                 {conf.label}
               </span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ color: '#1e2535', fontSize: '0.52rem', letterSpacing: '0.06em' }}>
-                  tap to hide
+                  tap to close
                 </span>
                 <span style={{ color: '#334155', fontSize: '0.58rem' }}>
                   {card.isCustom ? 'custom' : card.drawnByName}
@@ -165,7 +214,7 @@ function MiniCard({ card, index }: { card: DrawnCard; index: number }) {
   )
 }
 
-// Minimal inline SVG per tier — no ID conflicts, purely decorative
+// Minimal inline SVG per tier — no ID conflicts
 function MiniTierSymbol({ tier, color }: { tier: QuestionTier; color: string }) {
   const s = 32
   if (tier === 'light') return (
@@ -209,7 +258,6 @@ function EmptyState() {
         .es-root { animation: es-fade 0.5s ease 0.2s both; font-family: 'DM Sans', system-ui, sans-serif; }
       `}</style>
       <div className="es-root col-span-2 flex flex-col items-center justify-center py-14 gap-3">
-        {/* Decorative stacked card icon */}
         <div className="relative" style={{ width: 52, height: 52 }}>
           {[
             { bg: '#0f172a', border: 'rgba(255,255,255,0.06)', rotate: '-6deg', z: 0 },
@@ -221,9 +269,9 @@ function EmptyState() {
               className="absolute inset-0 rounded-xl"
               style={{
                 background: card.bg,
-                border: `1px solid ${card.border}`,
-                transform: `rotate(${card.rotate})`,
-                zIndex: card.z,
+                border:     `1px solid ${card.border}`,
+                transform:  `rotate(${card.rotate})`,
+                zIndex:     card.z,
               }}
             />
           ))}
@@ -245,7 +293,7 @@ function EmptyState() {
 // QuestionGrid
 // ---------------------------------------------------------------------------
 
-export function QuestionGrid({ cards }: QuestionGridProps) {
+export function QuestionGrid({ cards, onOpen }: QuestionGridProps) {
   return (
     <>
       <style>{`
@@ -253,21 +301,18 @@ export function QuestionGrid({ cards }: QuestionGridProps) {
       `}</style>
 
       <div className="px-4 pb-6">
-        {/* Section label */}
         {cards.length > 0 && (
           <div
             className="flex items-center gap-3 mb-4"
             style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}
           >
-            <span
-              style={{
-                color: '#334155',
-                fontSize: '0.65rem',
-                fontWeight: 600,
-                letterSpacing: '0.14em',
-                textTransform: 'uppercase',
-              }}
-            >
+            <span style={{
+              color:         '#334155',
+              fontSize:      '0.65rem',
+              fontWeight:    600,
+              letterSpacing: '0.14em',
+              textTransform: 'uppercase',
+            }}>
               Drawn this session
             </span>
             <div
@@ -280,12 +325,16 @@ export function QuestionGrid({ cards }: QuestionGridProps) {
           </div>
         )}
 
-        {/* 2-column card grid */}
         <div className="grid grid-cols-2 gap-3">
           {cards.length === 0
             ? <EmptyState />
             : cards.map((card, idx) => (
-                <MiniCard key={card.key} card={card} index={idx} />
+                <MiniCard
+                  key={card.key}
+                  card={card}
+                  index={idx}
+                  onOpen={onOpen}
+                />
               ))
           }
         </div>
