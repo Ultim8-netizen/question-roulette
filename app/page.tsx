@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 const TIER_COLORS = ['#4ade80', '#60a5fa', '#f87171', '#c084fc']
 
@@ -124,6 +125,10 @@ export default function HomePage() {
           0%,100% { opacity:0.35; transform:scale(1);    }
           50%      { opacity:0.75; transform:scale(1.2); }
         }
+        @keyframes hp-guide-in {
+          from { opacity:0; transform:translateY(6px); }
+          to   { opacity:1; transform:translateY(0);   }
+        }
 
         .hp-orb-1 { animation: hp-orb-1 9s  ease-in-out infinite; }
         .hp-orb-2 { animation: hp-orb-2 11s ease-in-out infinite; }
@@ -137,6 +142,7 @@ export default function HomePage() {
         .hp-form-in    { animation: hp-form-in     0.50s cubic-bezier(0.22,1,0.36,1) 0.44s both; }
         .hp-divider-in { animation: hp-divider-in  0.60s cubic-bezier(0.22,1,0.36,1) 0.14s both; transform-origin: center; }
         .hp-btn-shimmer{ animation: hp-btn-shimmer 1.6s ease-in-out 0.2s both; }
+        .hp-guide-in   { animation: hp-guide-in    0.50s cubic-bezier(0.22,1,0.36,1) 0.58s both; }
 
         .hp-font-serif { font-family: 'Cormorant Garamond', Georgia, serif; }
         .hp-font-sans  { font-family: 'DM Sans', system-ui, sans-serif; }
@@ -149,6 +155,20 @@ export default function HomePage() {
         .hp-tier-dot-1 { animation: hp-tier-dot 3.0s ease-in-out 0.4s infinite; }
         .hp-tier-dot-2 { animation: hp-tier-dot 3.0s ease-in-out 0.8s infinite; }
         .hp-tier-dot-3 { animation: hp-tier-dot 3.0s ease-in-out 1.2s infinite; }
+
+        .hp-guide-link {
+          color: #1e2535;
+          text-decoration: none;
+          font-family: 'DM Sans', system-ui, sans-serif;
+          font-size: 0.70rem;
+          font-weight: 400;
+          letter-spacing: 0.04em;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          transition: color 0.2s ease;
+        }
+        .hp-guide-link:hover { color: #334155; }
       `}</style>
 
       <div
@@ -380,11 +400,31 @@ export default function HomePage() {
             </button>
           </div>
 
+          {/* How to play link — subtle, below the form */}
+          <div
+            className="hp-guide-in"
+            style={{
+              marginTop: 20,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Link href="/how-to-play" className="hp-guide-link">
+              <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+                <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.1" />
+                <path d="M5.5 5.5C5.5 4.67 6.17 4 7 4s1.5.67 1.5 1.5c0 .83-.67 1.5-1.5 1.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
+                <circle cx="7" cy="9.5" r="0.6" fill="currentColor" />
+              </svg>
+              How to play
+            </Link>
+          </div>
+
           {/* Footer hint */}
           <p
             className="hp-sub-in hp-font-sans"
             style={{
-              marginTop: 28,
+              marginTop: 20,
               color: '#131820',
               fontSize: '0.68rem',
               fontWeight: 400,

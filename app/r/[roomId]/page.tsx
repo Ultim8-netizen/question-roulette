@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
+import Link from 'next/link'
 import { getSupabaseBrowserClient } from '@/lib/supabase'
 import type { Room, PlayerSlot, QuestionTier, PendingQuestion, RoomEvent, Message } from '@/lib/supabase'
 import { useRoomChannel } from '@/hooks/useRoomChannel'
@@ -567,7 +568,6 @@ export default function RoomPage() {
         ? (r.player1_name ?? 'Player 1')
         : (r.player2_name ?? 'Player 2')
 
-      // Push card to grid for both players.
       setCards(prev => [...prev, {
         key:           `${event.questionIndex}-${Date.now()}`,
         questionIndex: event.questionIndex,
@@ -575,14 +575,10 @@ export default function RoomPage() {
         tier:          event.tier,
         isCustom:      event.isCustom,
         drawnByName,
-        drawnByMe:     false, // this branch is always the OTHER player's draw event
+        drawnByMe:     false,
       }])
 
-      // Auto-open modal ONLY for the player who drew the card.
-      // The non-drawer sees a toast and opens the card by tapping the grid.
       if (event.player === mySlotRef.current) {
-        // Safety guard: sender handles their own draw in handleDraw,
-        // so this branch should rarely be hit, but handle it correctly.
         setMessages([])
         setActivePick({
           questionIndex: event.questionIndex,
@@ -593,7 +589,6 @@ export default function RoomPage() {
           isMyDraw:      true,
         })
       } else {
-        // Non-drawer: informational toast only — they tap the card when ready.
         setToast(`${drawnByName} drew a card — tap it to read and respond`)
       }
     }
@@ -621,9 +616,6 @@ export default function RoomPage() {
     }
 
     if (event.type === 'MESSAGE_SENT') {
-      // Only append if the message belongs to the currently open card thread.
-      // (The sender already applied an optimistic update, so self is never received
-      // here because channel.config.broadcast.self = false.)
       const current = activePickRef.current
       if (current && event.questionIndex === current.questionIndex) {
         setMessages(prev => [...prev, {
@@ -639,12 +631,10 @@ export default function RoomPage() {
     }
 
     if (event.type === 'TYPING') {
-      // Only show indicator if the other player is typing in the currently open card.
       const current = activePickRef.current
       if (current && event.questionIndex === current.questionIndex) {
         setOtherIsTyping(true)
         setOtherTypingIndex(event.questionIndex)
-        // Auto-clear after 3 s without a new TYPING event.
         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
         typingTimeoutRef.current = setTimeout(() => {
           setOtherIsTyping(false)
@@ -694,8 +684,6 @@ export default function RoomPage() {
       setHasBothPlayers(!!r.player2_name)
       if (r.pending_question) setPendingProposal(r.pending_question)
 
-      // Reconstruct drawn cards from persisted indices so both players are
-      // back in sync after a page refresh.
       if (r.drawn_indices && r.drawn_indices.length > 0 && r.question_pool) {
         const reconstructed: DrawnCard[] = r.drawn_indices.map((qi: number, position: number) => {
           const q = r.question_pool[qi]
@@ -706,15 +694,12 @@ export default function RoomPage() {
             questionText:  q.text,
             tier:          q.tier,
             isCustom:      q.isCustom,
-            // On reconstruction we don't know who drew which card, so attribute
-            // to player 1 by name. drawnByName is display-only in the grid.
             drawnByName:   r.player1_name,
             drawnByMe:     false,
           }
         }).filter(Boolean) as DrawnCard[]
         setCards(reconstructed)
       }
-      // Do NOT reopen activePick on refresh — modal never auto-opens on load.
 
       const stored = sessionStorage.getItem(`f9q-slot-${roomId}`)
       if (stored === '1') {
@@ -778,7 +763,6 @@ export default function RoomPage() {
     const drawnByName = mySlot === 1 ? r.player1_name : (r.player2_name ?? 'Player 2')
 
     setCurrentTurn(nextTurn)
-    // Push with new shape — drawnByMe: true because this is the local player's draw.
     setCards(prev => [...prev, {
       key:           `${questionIndex}-${Date.now()}`,
       questionIndex,
@@ -806,7 +790,6 @@ export default function RoomPage() {
       drawnByName:   card.drawnByName,
       isMyDraw:      card.drawnByMe,
     })
-    // Fire-and-forget — load persisted message history for this card's thread.
     void loadMessagesForCard(card.questionIndex)
   }
 
@@ -871,7 +854,6 @@ export default function RoomPage() {
       ? (r?.player1_name ?? 'Player 1')
       : (r?.player2_name ?? 'Player 2')
 
-    // Optimistic update — shows the message immediately for the sender.
     const optimisticId  = `optimistic-${Date.now()}`
     const optimisticMsg: Message = {
       id:             optimisticId,
@@ -899,7 +881,6 @@ export default function RoomPage() {
     setIsSendingMessage(false)
 
     if (!res.ok) {
-      // Roll back the optimistic message on failure.
       setMessages(prev => prev.filter(m => m.id !== optimisticId))
       setToast('Message failed to send. Try again.')
       return
@@ -907,14 +888,12 @@ export default function RoomPage() {
 
     const { messageId, createdAt } = await res.json()
 
-    // Replace optimistic placeholder with the real DB-assigned id + timestamp.
     setMessages(prev => prev.map(m =>
       m.id === optimisticId
         ? { ...m, id: messageId, created_at: createdAt }
         : m
     ))
 
-    // Broadcast to the other player.
     await sendEvent({
       type:          'MESSAGE_SENT',
       questionIndex: activePick.questionIndex,
@@ -960,45 +939,95 @@ export default function RoomPage() {
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=DM+Sans:wght@300;400;500&display=swap');
         * { box-sizing: border-box; }
         body { background: #020308; margin: 0; }
+
+        .guide-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          border: 1px solid rgba(255,255,255,0.07);
+          background: transparent;
+          color: #2a3244;
+          text-decoration: none;
+          transition: border-color 0.2s ease, color 0.2s ease;
+          flex-shrink: 0;
+        }
+        .guide-btn:hover {
+          border-color: rgba(255,255,255,0.13);
+          color: #475569;
+        }
       `}</style>
 
       <main style={{ minHeight: '100dvh', background: '#020308', paddingBottom: 140 }}>
 
-        {/* Player nameplate header */}
+        {/* Player nameplate header — ? guide button sits between the VS and the right player */}
         <div style={{
           display:'flex', alignItems:'center', justifyContent:'space-between',
           padding:'18px 20px 0',
           fontFamily:"'DM Sans',system-ui,sans-serif",
+          gap: 8,
         }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          {/* Player 1 */}
+          <div style={{ display:'flex', alignItems:'center', gap:8, flex: 1, minWidth: 0 }}>
             <div style={{
               width:28, height:28, borderRadius:'50%',
               background:'linear-gradient(135deg,#1a1f30,#111520)',
               border:'1px solid rgba(255,255,255,0.08)',
               display:'flex', alignItems:'center', justifyContent:'center',
               color:'#475569', fontSize:'0.6rem', fontWeight:700, letterSpacing:'0.05em',
+              flexShrink: 0,
             }}>
               {p1Name.charAt(0).toUpperCase()}
             </div>
-            <span style={{ color: mySlot === 1 ? '#94a3b8' : '#334155', fontSize:'0.82rem', fontWeight:400 }}>
+            <span style={{
+              color: mySlot === 1 ? '#94a3b8' : '#334155',
+              fontSize:'0.82rem', fontWeight:400,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
               {p1Name}
               {mySlot === 1 && <span style={{ color:'#1e2535', fontSize:'0.65rem', marginLeft:6 }}>you</span>}
             </span>
           </div>
 
-          <span style={{ color:'#1e2535', fontSize:'0.65rem', fontWeight:600, letterSpacing:'0.12em' }}>VS</span>
+          {/* Centre: VS + guide button */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <span style={{ color:'#1e2535', fontSize:'0.65rem', fontWeight:600, letterSpacing:'0.12em' }}>VS</span>
+            {/* Guide button — opens /how-to-play in new tab so game state is preserved */}
+            <Link
+              href="/how-to-play"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="guide-btn"
+              aria-label="How to play"
+              title="How to play"
+            >
+              <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+                <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.1" />
+                <path d="M5.5 5.5C5.5 4.67 6.17 4 7 4s1.5.67 1.5 1.5c0 .83-.67 1.5-1.5 1.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
+                <circle cx="7" cy="9.5" r="0.6" fill="currentColor" />
+              </svg>
+            </Link>
+          </div>
 
-          <div style={{ display:'flex', alignItems:'center', gap:8, flexDirection:'row-reverse' }}>
+          {/* Player 2 */}
+          <div style={{ display:'flex', alignItems:'center', gap:8, flexDirection:'row-reverse', flex: 1, minWidth: 0 }}>
             <div style={{
               width:28, height:28, borderRadius:'50%',
               background:'linear-gradient(135deg,#1a1f30,#111520)',
               border:'1px solid rgba(255,255,255,0.08)',
               display:'flex', alignItems:'center', justifyContent:'center',
               color:'#475569', fontSize:'0.6rem', fontWeight:700, letterSpacing:'0.05em',
+              flexShrink: 0,
             }}>
               {p2Name.charAt(0).toUpperCase()}
             </div>
-            <span style={{ color: mySlot === 2 ? '#94a3b8' : '#334155', fontSize:'0.82rem', fontWeight:400 }}>
+            <span style={{
+              color: mySlot === 2 ? '#94a3b8' : '#334155',
+              fontSize:'0.82rem', fontWeight:400,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
               {p2Name}
               {mySlot === 2 && <span style={{ color:'#1e2535', fontSize:'0.65rem', marginRight:6 }}>you</span>}
             </span>
@@ -1055,7 +1084,7 @@ export default function RoomPage() {
         onPropose={() => setProposeOpen(true)}
       />
 
-      {/* Pick modal — includes messaging, typing indicator, and card-close sync */}
+      {/* Pick modal */}
       {activePick && (
         <PickModal
           questionText={activePick.questionText}
@@ -1064,8 +1093,6 @@ export default function RoomPage() {
           drawnByName={activePick.drawnByName}
           isMyDraw={activePick.isMyDraw}
           onClose={async () => {
-            // Broadcast CARD_CLOSED before clearing local state so the other
-            // player's modal is dismissed first.
             await sendEvent({ type: 'CARD_CLOSED', questionIndex: activePick.questionIndex })
             if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
             setOtherIsTyping(false)
