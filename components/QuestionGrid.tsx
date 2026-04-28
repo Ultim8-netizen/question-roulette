@@ -30,8 +30,6 @@ function MiniCard({ card, index }: { card: DrawnCard; index: number }) {
   const conf    = TIER_CONFIG[card.tier]
 
   // Each card staggers its entrance based on position in the grid.
-  // Cards added during a session animate in fresh; past cards (loaded on mount)
-  // are treated as already-present with a gentle fade.
   const entranceDelay = `${Math.min(index * 0.06, 0.5)}s`
 
   return (
@@ -45,6 +43,10 @@ function MiniCard({ card, index }: { card: DrawnCard; index: number }) {
           0%   { transform: rotateY(90deg);  opacity: 0; }
           100% { transform: rotateY(0deg);   opacity: 1; }
         }
+        @keyframes mc-flip-out {
+          0%   { transform: rotateY(0deg);   opacity: 1; }
+          100% { transform: rotateY(90deg);  opacity: 0; }
+        }
         .mc-card { animation: mc-enter 0.4s cubic-bezier(0.22,1,0.36,1) both; }
         .mc-flip  { animation: mc-flip-in 0.38s cubic-bezier(0.22,1,0.36,1) both; }
         .mc-font-serif { font-family: 'Cormorant Garamond', Georgia, serif; }
@@ -55,7 +57,6 @@ function MiniCard({ card, index }: { card: DrawnCard; index: number }) {
         className="mc-card relative overflow-hidden rounded-2xl cursor-pointer select-none active:scale-[0.97] transition-transform"
         style={{
           animationDelay: entranceDelay,
-          /* ── KEY CHANGE: tall portrait rectangle instead of near-square ── */
           height: 260,
           background: revealed
             ? 'linear-gradient(160deg, #0b0c12 0%, #080810 100%)'
@@ -66,7 +67,7 @@ function MiniCard({ card, index }: { card: DrawnCard; index: number }) {
             : `0 4px 24px ${conf.glow}, inset 0 1px 0 rgba(255,255,255,0.04)`,
           transition: 'background 0.5s ease, box-shadow 0.5s ease',
         }}
-        onClick={() => { if (!revealed) setReveal(true) }}
+        onClick={() => setReveal(prev => !prev)}
       >
         {/* — UNREVEALED STATE — */}
         {!revealed && (
@@ -87,7 +88,7 @@ function MiniCard({ card, index }: { card: DrawnCard; index: number }) {
               background: `radial-gradient(ellipse at 50% 50%, transparent 35%, ${conf.darkBg}cc 100%)`,
             }} />
 
-            {/* Center: tier symbol + label — more vertical breathing room */}
+            {/* Center: tier symbol + label */}
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
               <div style={{ opacity: 0.65 }}>
                 <MiniTierSymbol tier={card.tier} color={conf.primary} />
@@ -106,7 +107,7 @@ function MiniCard({ card, index }: { card: DrawnCard; index: number }) {
               </span>
             </div>
 
-            {/* Tap hint — sits higher off the bottom edge on the taller card */}
+            {/* Tap hint */}
             <div
               className="mc-font-sans absolute bottom-4 left-0 right-0 flex justify-center"
               style={{ color: `${conf.primary}45`, fontSize: '0.58rem', letterSpacing: '0.08em' }}
@@ -126,7 +127,7 @@ function MiniCard({ card, index }: { card: DrawnCard; index: number }) {
               marginBottom: 12,
             }} />
 
-            {/* Question text — more room to breathe on the taller card */}
+            {/* Question text */}
             <p
               className="mc-font-serif flex-1 overflow-hidden"
               style={{
@@ -148,9 +149,14 @@ function MiniCard({ card, index }: { card: DrawnCard; index: number }) {
               <span style={{ color: `${conf.primary}70`, fontSize: '0.58rem', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
                 {conf.label}
               </span>
-              <span style={{ color: '#334155', fontSize: '0.58rem' }}>
-                {card.isCustom ? 'custom' : card.drawnByName}
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ color: '#1e2535', fontSize: '0.52rem', letterSpacing: '0.06em' }}>
+                  tap to hide
+                </span>
+                <span style={{ color: '#334155', fontSize: '0.58rem' }}>
+                  {card.isCustom ? 'custom' : card.drawnByName}
+                </span>
+              </div>
             </div>
           </div>
         )}
