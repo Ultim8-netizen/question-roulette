@@ -27,7 +27,7 @@ function SunIcon() {
     <svg width="11" height="11" viewBox="0 0 14 14" fill="none" aria-hidden="true">
       <circle cx="7" cy="7" r="3" stroke="currentColor" strokeWidth="1.3" />
       {[0, 45, 90, 135, 180, 225, 270, 315].map(deg => {
-        const r = deg * Math.PI / 180
+        const r  = deg * Math.PI / 180
         const x1 = 7 + Math.cos(r) * 4.2
         const y1 = 7 + Math.sin(r) * 4.2
         const x2 = 7 + Math.cos(r) * 5.6
@@ -67,7 +67,7 @@ export function ThemeToggle() {
     if (!open) return
     function handleClick(e: MouseEvent) {
       if (
-        panelRef.current  && !panelRef.current.contains(e.target as Node) &&
+        panelRef.current   && !panelRef.current.contains(e.target as Node) &&
         triggerRef.current && !triggerRef.current.contains(e.target as Node)
       ) {
         setOpen(false)
@@ -107,9 +107,8 @@ export function ThemeToggle() {
           transition: transform 0.15s ease, box-shadow 0.15s ease;
           flex-shrink: 0;
         }
-        .tt-swatch:hover {
-          transform: scale(1.15);
-        }
+        .tt-swatch:hover { transform: scale(1.15); }
+
         .tt-trigger {
           display: flex;
           align-items: center;
@@ -134,7 +133,16 @@ export function ThemeToggle() {
         }
       `}</style>
 
-      <div style={{ position: 'relative', display: 'inline-block' }}>
+      {/*
+        Outer wrapper: position relative + explicit z-index 300.
+        This must be higher than:
+          - DrawButton fixed overlay  (z-40  = 40)
+          - TurnBanner right col      (z-200 = 200)
+          - PickModal backdrop        (z-50  = 50)
+        The panel renders as a child of this stacking context so it
+        inherits the z-300 layer and is always clickable.
+      */}
+      <div style={{ position: 'relative', display: 'inline-block', zIndex: 300 }}>
 
         {/* Pill trigger */}
         <button
@@ -145,39 +153,53 @@ export function ThemeToggle() {
           aria-expanded={open}
         >
           <ThemeIcon isDark={isDark} />
-          <span style={{ color: 'var(--th-text-3)', textTransform: 'capitalize' }}>
+          <span style={{ color: 'var(--th-text-2)', textTransform: 'capitalize' }}>
             Theme
           </span>
         </button>
 
-        {/* Picker panel */}
+        {/* Picker panel
+            - z-index 300 inherited from parent stacking context
+            - background / border / text all via var(--th-*) tokens
+            - section label colour uses var(--th-text-1) for guaranteed
+              contrast on both dark and light theme backgrounds            */}
         {open && (
           <div
             ref={panelRef}
             className="tt-panel"
             style={{
-              position:    'absolute',
-              top:         'calc(100% + 8px)',
-              right:       0,
-              zIndex:      200,
-              width:       204,
-              background:  'var(--th-surface)',
-              border:      '1px solid var(--th-border-2)',
+              position:     'absolute',
+              top:          'calc(100% + 8px)',
+              right:        0,
+              zIndex:       300,
+              width:        204,
+              background:   'var(--th-surface)',
+              border:       '1px solid var(--th-border-2)',
               borderRadius: 16,
-              padding:     '14px 14px 12px',
-              boxShadow:   '0 16px 48px rgba(0,0,0,0.28)',
+              padding:      '14px 14px 12px',
+              /* Layered shadow so the panel lifts clearly above the banner
+                 on both dark and light themes                              */
+              boxShadow: [
+                '0 4px 6px -1px rgba(0,0,0,0.10)',
+                '0 16px 48px rgba(0,0,0,0.22)',
+                '0 0 0 1px var(--th-border)',
+              ].join(', '),
+              /* Ensure the panel itself intercepts all pointer events */
+              pointerEvents: 'auto',
             }}
           >
 
-            {/* Dark section */}
+            {/* Dark section label */}
             <div style={{
               display:       'flex',
               alignItems:    'center',
               gap:           6,
               marginBottom:  10,
-              color:         'var(--th-text-3)',
+              /* var(--th-text-1) guaranteed readable on var(--th-surface)
+                 for every theme in the registry                           */
+              color:         'var(--th-text-1)',
               fontSize:      '0.58rem',
-              fontWeight:    600,
+              fontWeight:    700,
               letterSpacing: '0.14em',
               textTransform: 'uppercase',
               fontFamily:    "'DM Sans', system-ui, sans-serif",
@@ -202,19 +224,19 @@ export function ThemeToggle() {
             {/* Divider */}
             <div style={{
               height:       1,
-              background:   'var(--th-border)',
+              background:   'var(--th-border-2)',
               marginBottom: 12,
             }} />
 
-            {/* Light section */}
+            {/* Light section label */}
             <div style={{
               display:       'flex',
               alignItems:    'center',
               gap:           6,
               marginBottom:  10,
-              color:         'var(--th-text-3)',
+              color:         'var(--th-text-1)',
               fontSize:      '0.58rem',
-              fontWeight:    600,
+              fontWeight:    700,
               letterSpacing: '0.14em',
               textTransform: 'uppercase',
               fontFamily:    "'DM Sans', system-ui, sans-serif",
@@ -244,7 +266,9 @@ export function ThemeToggle() {
 }
 
 // ---------------------------------------------------------------------------
-// SwatchButton — circle + label
+// SwatchButton — circle swatch + label
+// Label uses var(--th-text-1) / var(--th-text-2) so it's readable on every
+// theme background (previously used var(--th-text-3) which vanishes on light)
 // ---------------------------------------------------------------------------
 
 function SwatchButton({
@@ -271,27 +295,30 @@ function SwatchButton({
         border:        'none',
         padding:       0,
         cursor:        'pointer',
+        /* Explicit pointer-events so nothing above intercepts clicks */
+        pointerEvents: 'auto',
       }}
     >
       {/* Circle swatch */}
       <span
         className="tt-swatch"
         style={{
-          width:     28,
-          height:    28,
+          width:      28,
+          height:     28,
           background: swatch,
-          boxShadow: active
-            ? `0 0 0 2px var(--th-bg), 0 0 0 3.5px var(--th-text-2)`
+          boxShadow:  active
+            ? `0 0 0 2px var(--th-bg), 0 0 0 3.5px var(--th-text-1)`
             : `0 0 0 1px var(--th-border-2)`,
-          display:   'inline-block',
+          display:    'inline-block',
         }}
       />
-      {/* Label */}
+      {/* Label — var(--th-text-1) for active, var(--th-text-2) otherwise.
+          Both are high-contrast on var(--th-surface) across all themes.  */}
       <span style={{
         fontFamily:    "'DM Sans', system-ui, sans-serif",
         fontSize:      '0.52rem',
-        fontWeight:    active ? 600 : 400,
-        color:         active ? 'var(--th-text-1)' : 'var(--th-text-3)',
+        fontWeight:    active ? 700 : 400,
+        color:         active ? 'var(--th-text-1)' : 'var(--th-text-2)',
         letterSpacing: '0.04em',
         lineHeight:    1,
         transition:    'color 0.15s ease',

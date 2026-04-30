@@ -23,7 +23,7 @@ const STATUS_CONFIG: Record<ChannelStatus, { color: string; label: string; pulse
 }
 
 // ---------------------------------------------------------------------------
-// Sigil
+// Sigil — uses var(--th-brand) so it adapts to any theme
 // ---------------------------------------------------------------------------
 
 function AbyssSignil({ size = 10, opacity = 0.18 }: { size?: number; opacity?: number }) {
@@ -105,7 +105,8 @@ export function TurnBanner({
       >
         {/* Left: orb + text */}
         <div className="flex items-center gap-3.5">
-          {/* Indicator orb */}
+
+          {/* Indicator orb — active stays green; inactive uses theme surface tokens */}
           <div
             className={isMyTurn ? 'tb-orb-active' : ''}
             style={{
@@ -125,6 +126,7 @@ export function TurnBanner({
             }}
           >
             {isMyTurn ? (
+              /* Card-draw icon — white strokes always readable on green orb */
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                 <rect x="2"  y="4"  width="10" height="13" rx="1.8" fill="rgba(0,0,0,0.35)" stroke="rgba(255,255,255,0.55)" strokeWidth="0.9"/>
                 <rect x="5"  y="2"  width="10" height="13" rx="1.8" fill="rgba(0,0,0,0.25)" stroke="rgba(255,255,255,0.80)" strokeWidth="0.9"/>
@@ -132,20 +134,21 @@ export function TurnBanner({
                 <line x1="8" y1="9.5" x2="12" y2="9.5" stroke="rgba(255,255,255,0.35)" strokeWidth="0.8" strokeLinecap="round"/>
               </svg>
             ) : (
+              /* Hourglass / waiting icon — uses theme text tokens */
               <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
                 <path d="M3 1.5h9M3 13.5h9" stroke="var(--th-text-3)" strokeWidth="1.2" strokeLinecap="round"/>
-                <path d="M4 1.5 C4 5.5 7.5 7.5 7.5 7.5 C7.5 7.5 11 5.5 11 1.5" fill="var(--th-border)" stroke="var(--th-text-4)" strokeWidth="0.9"/>
-                <path d="M4 13.5 C4 9.5 7.5 7.5 7.5 7.5 C7.5 7.5 11 9.5 11 13.5" fill="var(--th-border-2)" stroke="var(--th-text-4)" strokeWidth="0.9"/>
+                <path d="M4 1.5 C4 5.5 7.5 7.5 7.5 7.5 C7.5 7.5 11 5.5 11 1.5" fill="var(--th-border-2)" stroke="var(--th-text-3)" strokeWidth="0.9"/>
+                <path d="M4 13.5 C4 9.5 7.5 7.5 7.5 7.5 C7.5 7.5 11 9.5 11 13.5" fill="var(--th-border-2)" stroke="var(--th-text-3)" strokeWidth="0.9"/>
               </svg>
             )}
           </div>
 
-          {/* Text block */}
+          {/* Text block — all colors via theme tokens */}
           <div className="flex flex-col gap-0.75">
             {isMyTurn ? (
               <>
                 <span style={{
-                  color: '#4ade80',
+                  color: '#4ade80',          /* green is intentional — it's the active-turn accent */
                   fontSize: '0.65rem',
                   fontWeight: 600,
                   letterSpacing: '0.14em',
@@ -183,8 +186,11 @@ export function TurnBanner({
           </div>
         </div>
 
-        {/* Right: connection status + theme toggle + brand watermark */}
-        <div className="flex flex-col items-end gap-2">
+        {/* Right: connection status + theme toggle + brand watermark
+            z-index: 200 ensures the ThemeToggle dropdown (z-300 after fix)
+            clears the DrawButton fixed overlay (z-40) and the backdrop     */}
+        <div className="flex flex-col items-end gap-2" style={{ position: 'relative', zIndex: 200 }}>
+
           {/* Connection status */}
           <div className="flex items-center gap-1.5">
             <div
@@ -197,12 +203,12 @@ export function TurnBanner({
                 flexShrink: 0,
               }}
             />
-            <span style={{ color: 'var(--th-text-3)', fontSize: '0.7rem', fontWeight: 500 }}>
+            <span style={{ color: 'var(--th-text-2)', fontSize: '0.7rem', fontWeight: 500 }}>
               {statusConf.label}
             </span>
           </div>
 
-          {/* Theme toggle — sits in the banner so it's always reachable in-game */}
+          {/* Theme toggle */}
           <ThemeToggle />
 
           {/* Brand watermark */}

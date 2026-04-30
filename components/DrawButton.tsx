@@ -73,32 +73,49 @@ export function DrawButton({
         .db-font-sans  { font-family: 'DM Sans', system-ui, sans-serif; }
       `}</style>
 
+      {/*
+        Fixed bottom container.
+
+        CRITICAL z-index rules:
+          - This overlay sits at z-40 (Tailwind) = 40.
+          - ThemeToggle panel is z-300 (set in ThemeToggle.tsx).
+          - We must NEVER let this container or its gradient intercept
+            pointer events in the z-300 layer above.
+
+        Strategy:
+          - The outer wrapper uses pointer-events: none so the gradient
+            fade area (above the button) is fully transparent to clicks.
+          - Only the interactive children (.db-interactive) re-enable
+            pointer-events: auto, and only for exactly their own bounds.
+          - The shimmer sweep overlay inside the button is pointer-events:none
+            so it can never eat a click even during loading.
+      */}
       <div
         className="db-font-sans fixed bottom-0 left-0 right-0 z-40 flex flex-col items-center"
         style={{
-          padding: '12px 20px max(20px, env(safe-area-inset-bottom)) 20px',
-          background: 'linear-gradient(to top, var(--th-bg) 55%, transparent)',
-          pointerEvents: 'none',
+          padding:       '12px 20px max(20px, env(safe-area-inset-bottom)) 20px',
+          background:    'linear-gradient(to top, var(--th-bg) 55%, transparent)',
+          pointerEvents: 'none',   /* gradient area never blocks clicks above */
         }}
       >
-        {/* "Add a question" ghost link */}
+        {/* "Add a question" ghost link — re-enables pointer events only on itself */}
         {isMyTurn && canPropose && !isLoading && (
           <button
-            className="db-link-in db-font-sans mb-3"
+            className="db-interactive db-link-in db-font-sans mb-3"
             style={{
               pointerEvents: 'auto',
-              background: 'none',
-              border: 'none',
-              padding: '6px 14px',
-              cursor: 'pointer',
-              color: 'var(--th-text-3)',
-              fontSize: '0.72rem',
-              fontWeight: 500,
+              background:    'none',
+              border:        'none',
+              padding:       '6px 14px',
+              cursor:        'pointer',
+              color:         'var(--th-text-3)',
+              fontSize:      '0.72rem',
+              fontWeight:    500,
               letterSpacing: '0.06em',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              transition: 'color 0.2s',
+              display:       'flex',
+              alignItems:    'center',
+              gap:           6,
+              transition:    'color 0.2s',
             }}
             onMouseEnter={e => (e.currentTarget.style.color = 'var(--th-text-2)')}
             onMouseLeave={e => (e.currentTarget.style.color = 'var(--th-text-3)')}
@@ -113,10 +130,13 @@ export function DrawButton({
           </button>
         )}
 
-        {/* Main draw button */}
-        <div className="relative w-full" style={{ maxWidth: 390, pointerEvents: 'auto' }}>
+        {/* Main draw button — re-enables pointer events only on its own bounds */}
+        <div
+          className="db-interactive relative w-full"
+          style={{ maxWidth: 390, pointerEvents: 'auto' }}
+        >
 
-          {/* Pulse ring */}
+          {/* Pulse ring — decorative only, no pointer interaction */}
           {isMyTurn && !isLoading && (
             <div
               className="db-pulse-ring absolute inset-0 rounded-[20px] pointer-events-none"
@@ -129,10 +149,10 @@ export function DrawButton({
             disabled={!isMyTurn || isLoading}
             onClick={handlePress}
             style={{
-              width: '100%',
-              height: 64,
+              width:        '100%',
+              height:       64,
               borderRadius: 20,
-              border: isMyTurn
+              border:       isMyTurn
                 ? '1.5px solid var(--th-border-2)'
                 : '1.5px solid var(--th-border)',
               background: isMyTurn
@@ -140,24 +160,24 @@ export function DrawButton({
                   ? 'var(--th-surface-2)'
                   : 'var(--th-surface)'
                 : 'var(--th-bg-alt)',
-              cursor: isMyTurn && !isLoading ? 'pointer' : 'default',
-              transform: pressed ? 'scale(0.975)' : 'scale(1)',
+              cursor:     isMyTurn && !isLoading ? 'pointer' : 'default',
+              transform:  pressed ? 'scale(0.975)' : 'scale(1)',
               transition: 'transform 0.18s cubic-bezier(0.34,1.56,0.64,1), background 0.4s ease, border-color 0.4s ease',
-              overflow: 'hidden',
-              position: 'relative',
-              display: 'flex',
+              overflow:   'hidden',
+              position:   'relative',
+              display:    'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: 14,
             }}
           >
-            {/* Loading shimmer sweep */}
+            {/* Loading shimmer — pointer-events: none so it never eats clicks */}
             {isLoading && (
               <div
                 className="db-sweep absolute pointer-events-none"
                 style={{
                   top: 0, bottom: 0,
-                  width: '40%',
+                  width:      '40%',
                   background: 'linear-gradient(90deg, transparent, var(--th-border-2), transparent)',
                 }}
               />
@@ -169,39 +189,39 @@ export function DrawButton({
               <div
                 className={isMyTurn && !isLoading ? 'db-fan-1' : ''}
                 style={{
-                  position: 'absolute', bottom: 0, left: 0,
-                  width: 20, height: 26, borderRadius: 5,
-                  background: isMyTurn ? 'var(--th-surface-2)' : 'var(--th-bg-alt)',
-                  border: `1px solid var(--th-border)`,
+                  position:        'absolute', bottom: 0, left: 0,
+                  width:           20, height: 26, borderRadius: 5,
+                  background:      isMyTurn ? 'var(--th-surface-2)' : 'var(--th-bg-alt)',
+                  border:          '1px solid var(--th-border)',
                   transformOrigin: 'bottom center',
-                  transform: 'rotate(-6deg)',
-                  transition: 'background 0.4s ease',
+                  transform:       'rotate(-6deg)',
+                  transition:      'background 0.4s ease',
                 }}
               />
               {/* Mid card */}
               <div
                 className={isMyTurn && !isLoading ? 'db-fan-2' : ''}
                 style={{
-                  position: 'absolute', bottom: 0, left: 5,
-                  width: 20, height: 26, borderRadius: 5,
-                  background: isMyTurn ? 'var(--th-surface)' : 'var(--th-bg-alt)',
-                  border: `1px solid var(--th-border)`,
+                  position:        'absolute', bottom: 0, left: 5,
+                  width:           20, height: 26, borderRadius: 5,
+                  background:      isMyTurn ? 'var(--th-surface)' : 'var(--th-bg-alt)',
+                  border:          '1px solid var(--th-border)',
                   transformOrigin: 'bottom center',
-                  transform: 'rotate(0deg)',
-                  transition: 'background 0.4s ease',
+                  transform:       'rotate(0deg)',
+                  transition:      'background 0.4s ease',
                 }}
               />
               {/* Front card */}
               <div
                 className={isMyTurn && !isLoading ? 'db-fan-3' : ''}
                 style={{
-                  position: 'absolute', bottom: 0, right: 0,
-                  width: 20, height: 26, borderRadius: 5,
-                  background: isMyTurn ? 'var(--th-surface-2)' : 'var(--th-bg-alt)',
-                  border: `1px solid var(--th-border-2)`,
+                  position:        'absolute', bottom: 0, right: 0,
+                  width:           20, height: 26, borderRadius: 5,
+                  background:      isMyTurn ? 'var(--th-surface-2)' : 'var(--th-bg-alt)',
+                  border:          '1px solid var(--th-border-2)',
                   transformOrigin: 'bottom center',
-                  transform: 'rotate(6deg)',
-                  transition: 'background 0.4s ease',
+                  transform:       'rotate(6deg)',
+                  transition:      'background 0.4s ease',
                 }}
               />
             </div>
@@ -211,12 +231,12 @@ export function DrawButton({
               <span
                 className="db-font-serif"
                 style={{
-                  color: isMyTurn ? 'var(--th-text-1)' : 'var(--th-text-4)',
-                  fontSize: '1.15rem',
-                  fontWeight: 600,
+                  color:         isMyTurn ? 'var(--th-text-1)' : 'var(--th-text-4)',
+                  fontSize:      '1.15rem',
+                  fontWeight:    600,
                   letterSpacing: '0.02em',
-                  lineHeight: 1,
-                  transition: 'color 0.4s ease',
+                  lineHeight:    1,
+                  transition:    'color 0.4s ease',
                 }}
               >
                 {isLoading ? 'Drawing...' : 'Draw'}
@@ -224,12 +244,12 @@ export function DrawButton({
               <span
                 className="db-font-sans"
                 style={{
-                  color: isMyTurn ? 'var(--th-text-3)' : 'var(--th-text-4)',
-                  fontSize: '0.62rem',
-                  fontWeight: 400,
+                  color:         isMyTurn ? 'var(--th-text-3)' : 'var(--th-text-4)',
+                  fontSize:      '0.62rem',
+                  fontWeight:    400,
                   letterSpacing: '0.10em',
                   textTransform: 'uppercase',
-                  transition: 'color 0.4s ease',
+                  transition:    'color 0.4s ease',
                 }}
               >
                 {isLoading ? 'Fetching your card' : 'Random card'}
