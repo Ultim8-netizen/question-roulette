@@ -5,6 +5,7 @@ export type Question = {
 
 export const QUESTIONS: Question[] = [
   // ─── LIGHT ───────────────────────────────────────────────────────────────────
+  // Layer A — icebreakers: activate the playful self before defenses organize
   { text: "What's the most embarrassing song on your current playlist?", tier: 'light' },
   { text: "What's a skill you have that would genuinely surprise people?", tier: 'light' },
   { text: "What's something you're weirdly competitive about?", tier: 'light' },
@@ -31,24 +32,28 @@ export const QUESTIONS: Question[] = [
   { text: "What kind of chaos do you unintentionally bring into people's lives?", tier: 'light' },
   { text: "A moment you wish had a better comeback line?", tier: 'light' },
   { text: "You're secretly better than most people at something — what is it?", tier: 'light' },
-  { text: "Don't answer this out loud yet — what came up first?", tier: 'light' },
-  { text: "You skipped something just now... what was it?", tier: 'light' },
-  { text: "Stay with the first reaction, not the polished one — what was it?", tier: 'light' },
+
+  // Layer B — meta-cognitive interruptions: catch the player mid-performance,
+  // surface the pre-edited thought, expose the filter while it's still running.
+  // All questions are self-referential to this moment, this game, this question.
+  { text: "Before you formed a response just now — something surfaced first. What was it?", tier: 'light' },
+  { text: "There's something that moves through your mind in moments like this that you automatically decide not to say — what kind of thing is it?", tier: 'light' },
+  { text: "Your unedited reaction to this question, in the half-second before you started shaping it — what direction was it pointing?", tier: 'light' },
   { text: "There's a part of you waiting for a better question — what would it need to feel worth answering?", tier: 'light' },
   { text: "You're reading this from a distance — what would make it land closer?", tier: 'light' },
   { text: "Something in you just disengaged slightly — what triggered that?", tier: 'light' },
-  { text: "If you didn't try to be accurate, what would you say instead?", tier: 'light' },
-  { text: "You almost adjusted your answer before forming it — what changed?", tier: 'light' },
-  { text: "This would be easier to joke about — what sits underneath the joke?", tier: 'light' },
+  { text: "If you stopped caring about being accurate or appropriate for the next ten seconds — what would you actually say?", tier: 'light' },
+  { text: "Something you've caught yourself rewording mid-sentence because the honest version felt too exposed — what was being adjusted?", tier: 'light' },
+  { text: "There's something you almost always deflect with humor — what's the thing the joke is covering?", tier: 'light' },
   { text: "You're aware of how you might sound — what happens if that doesn't matter for a second?", tier: 'light' },
-  { text: "There's a quieter answer behind the obvious one — what direction is it pulling?", tier: 'light' },
-  { text: "You're filtering in real time — what's getting removed?", tier: 'light' },
+  { text: "There's an obvious answer you'd give and a quieter one underneath it — when was the last time you went with the quiet one?", tier: 'light' },
+  { text: "Right now, playing this game — what kinds of answers are you quietly deciding not to give?", tier: 'light' },
   { text: "If you weren't trying to get it right, where would your mind go?", tier: 'light' },
   { text: "You can feel the point where you'd normally stop — what's just past it?", tier: 'light' },
   { text: "Something here doesn't fully register yet — what would make it hit?", tier: 'light' },
   { text: "You're holding a neutral expression internally — what would disrupt it?", tier: 'light' },
-  { text: "There's a version of your answer you won't say — what kind of answer is it?", tier: 'light' },
-  { text: "You stayed on the surface on purpose — what made depth unnecessary just now?", tier: 'light' },
+  { text: "There's an unedited version of you that answers everything without checking first — what's different about what they'd say?", tier: 'light' },
+  { text: "Something you have a smooth, surface-level answer for that people tend to accept — what's actually underneath it?", tier: 'light' },
   { text: "If this question followed you for the next hour, what would it start pulling up?", tier: 'light' },
   { text: "You're still slightly outside the moment — what would bring you into it?", tier: 'light' },
 
@@ -136,6 +141,7 @@ export const QUESTIONS: Question[] = [
   { text: "The part of you that you keep hidden isn't weak — it's... what?", tier: 'deep' },
 
   // ─── SPICY ────────────────────────────────────────────────────────────────────
+  // Layer A — abstract desire: direct, internal, fantasy-forward
   { text: "What's the dirtiest thought you've had about someone you probably shouldn't have?", tier: 'spicy' },
   { text: "What's something you've fantasised about but never had the nerve to ask for?", tier: 'spicy' },
   { text: "How loud do you get?", tier: 'spicy' },
@@ -163,6 +169,10 @@ export const QUESTIONS: Question[] = [
   { text: "You're told to be completely honest about attraction — what shifts in your answers?", tier: 'spicy' },
   { text: "You notice chemistry instantly sometimes — what signals it?", tier: 'spicy' },
   { text: "Someone calls your bluff in a charged moment — what were you hiding?", tier: 'spicy' },
+
+  // Layer B — micro-scenarios: specific, sensory, situational anchors that
+  // bypass abstraction and trigger body memory. The sociology of flirtation
+  // made explicit — the unspoken rules of physical proximity named out loud.
   { text: "You're sitting close enough that your legs brush once... do you move away or let it happen again?", tier: 'spicy' },
   { text: "Someone you're attracted to lowers their voice just for you — what does that do to your focus?", tier: 'spicy' },
   { text: "You're dancing and it shifts from casual to intentional — what's the moment you notice it?", tier: 'spicy' },
