@@ -1,41 +1,59 @@
 @import "tailwindcss";
 
-/* ─── Abyssprotocol brand tokens ─────────────────────────────────────────── */
+/* ─── Default token values (void / dark) ────────────────────────────────────
+   These match the 'void' theme exactly.
+   The flash-prevention script in layout.tsx overwrites them before paint
+   when a different theme is stored in localStorage.
+   All components reference var(--th-*) — never hardcoded hex.            */
+
 :root {
-  /* Core palette */
-  --background: #020308;
-  --foreground: #ededed;
+  /* Theme surface tokens */
+  --th-bg:           #020308;
+  --th-bg-alt:       #06070d;
+  --th-surface:      #07080f;
+  --th-surface-2:    #0c0e16;
+  --th-border:       rgba(255,255,255,0.06);
+  --th-border-2:     rgba(255,255,255,0.11);
+  --th-fg:           #ededed;
+  --th-text-1:       #c8d0de;
+  --th-text-2:       #94a3b8;
+  --th-text-3:       #475569;
+  --th-text-4:       #1e2535;
+  --th-brand:        #c8d0de;
+  --th-input-bg:     #06070d;
+  --th-input-border: rgba(255,255,255,0.07);
+  --th-overlay:      rgba(2,3,8,0.88);
 
-  /* Brand colors */
-  --abyss-void:       #020308;
-  --abyss-starlight:  #c8d0de;
-  --abyss-slate:      #334155;
-  --abyss-deep:       #0c0e16;
-  --abyss-surface:    #07080f;
-  --abyss-muted:      #1e2535;
-  --abyss-ghost:      #0d1018;
-
-  /* Tier colors — kept as tokens for consistency */
+  /* Tier colours — unchanged across themes; components use these directly */
   --tier-light:  #4ade80;
   --tier-medium: #60a5fa;
   --tier-deep:   #f87171;
   --tier-spicy:  #c084fc;
 
-  /* Brand typography */
-  --font-brand-mono: 'Geist Mono', ui-monospace, 'Fira Mono', 'Cascadia Code', monospace;
-  --font-brand-serif: 'Cormorant Garamond', Georgia, serif;
-  --font-brand-sans: 'DM Sans', system-ui, sans-serif;
+  /* Legacy brand tokens (kept for any SVG / non-themed surfaces) */
+  --abyss-void:      #020308;
+  --abyss-starlight: #c8d0de;
+  --abyss-slate:     #334155;
+  --abyss-deep:      #0c0e16;
+  --abyss-surface:   #07080f;
+  --abyss-muted:     #1e2535;
+  --abyss-ghost:     #0d1018;
 
-  /* Brand spacing / radius */
-  --radius-card:   16px;
-  --radius-input:  14px;
-  --radius-badge:  99px;
+  /* Typography */
+  --font-brand-mono:  'Geist Mono', ui-monospace, 'Fira Mono', monospace;
+  --font-brand-serif: 'Cormorant Garamond', Georgia, serif;
+  --font-brand-sans:  'DM Sans', system-ui, sans-serif;
+
+  /* Radius */
+  --radius-card:  16px;
+  --radius-input: 14px;
+  --radius-badge: 99px;
 }
 
-/* ─── Tailwind theme bridge ──────────────────────────────────────────────── */
+/* ─── Tailwind bridge ────────────────────────────────────────────────────── */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--th-bg);
+  --color-foreground: var(--th-fg);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -43,9 +61,7 @@
 /* ─── Base ───────────────────────────────────────────────────────────────── */
 *,
 *::before,
-*::after {
-  box-sizing: border-box;
-}
+*::after { box-sizing: border-box; }
 
 html {
   -webkit-font-smoothing: antialiased;
@@ -54,48 +70,52 @@ html {
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--th-bg);
+  color:      var(--th-fg);
   font-family: var(--font-brand-sans);
   margin: 0;
+  /* Smooth background / colour transitions when theme changes */
+  transition: background 0.28s ease, color 0.28s ease;
+}
+
+/* ─── Light-mode root overrides ─────────────────────────────────────────────
+   When data-mode="light" is set by the theme engine, bump up contrast
+   for elements that still use legacy --abyss-* tokens.                    */
+[data-mode="light"] {
+  --abyss-starlight: var(--th-text-1);
+  --abyss-slate:     var(--th-text-2);
+  --abyss-muted:     var(--th-text-3);
+  --abyss-ghost:     var(--th-text-4);
 }
 
 /* ─── Brand utility classes ──────────────────────────────────────────────── */
-
-/* Wordmark — all lowercase mono letterpress feel */
 .brand-wordmark {
   font-family: var(--font-brand-mono);
   font-weight: 500;
   letter-spacing: 0.22em;
   text-transform: lowercase;
-  color: var(--abyss-starlight);
+  color: var(--th-brand);
 }
 
-/* Ghost watermark — nearly invisible brand imprint */
 .brand-ghost {
   font-family: var(--font-brand-mono);
   font-size: 0.60rem;
   font-weight: 400;
   letter-spacing: 0.18em;
   text-transform: lowercase;
-  color: var(--abyss-ghost);
+  color: var(--th-text-4);
   user-select: none;
   pointer-events: none;
 }
 
-/* Brand serif — editorial moments */
-.brand-serif {
-  font-family: var(--font-brand-serif);
-}
+.brand-serif { font-family: var(--font-brand-serif); }
 
-/* Brand surface card */
 .brand-card {
-  background: var(--abyss-surface);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--th-surface);
+  border: 1px solid var(--th-border);
   border-radius: var(--radius-card);
 }
 
-/* Tier dot — pulsing indicator */
 .tier-dot {
   width: 4px;
   height: 4px;
@@ -103,39 +123,42 @@ body {
   display: inline-block;
 }
 
-/* ─── Scrollbar — void themed ────────────────────────────────────────────── */
-::-webkit-scrollbar {
-  width: 4px;
+/* ─── Theme-transition helper ────────────────────────────────────────────── */
+/* Applied to interactive surfaces so they cross-fade on theme switch */
+.theme-transition {
+  transition:
+    background 0.28s ease,
+    border-color 0.28s ease,
+    color 0.22s ease;
 }
-::-webkit-scrollbar-track {
-  background: var(--abyss-void);
-}
+
+/* ─── Scrollbar ──────────────────────────────────────────────────────────── */
+::-webkit-scrollbar       { width: 4px; }
+::-webkit-scrollbar-track { background: var(--th-bg); }
 ::-webkit-scrollbar-thumb {
-  background: var(--abyss-muted);
+  background: var(--th-surface-2);
   border-radius: 2px;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: var(--abyss-slate);
-}
+::-webkit-scrollbar-thumb:hover { background: var(--th-text-4); }
 
 /* ─── Selection ──────────────────────────────────────────────────────────── */
 ::selection {
-  background: rgba(200, 208, 222, 0.12);
-  color: var(--abyss-starlight);
+  background: rgba(200,208,222,0.18);
+  color: var(--th-text-1);
 }
 
-/* ─── Focus visible — accessible but brand-consistent ───────────────────── */
+/* ─── Focus ──────────────────────────────────────────────────────────────── */
 :focus-visible {
-  outline: 1px solid rgba(200, 208, 222, 0.25);
+  outline: 1px solid var(--th-border-2);
   outline-offset: 2px;
   border-radius: 4px;
 }
 
-/* ─── Input reset — prevents browser autofill clobbering ────────────────── */
+/* ─── Autofill — use theme input bg ─────────────────────────────────────── */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus {
-  -webkit-box-shadow: 0 0 0px 1000px #06070d inset;
-  -webkit-text-fill-color: #d1d9e6;
+  -webkit-box-shadow: 0 0 0px 1000px var(--th-input-bg) inset;
+  -webkit-text-fill-color: var(--th-text-1);
   transition: background-color 5000s ease-in-out 0s;
 }

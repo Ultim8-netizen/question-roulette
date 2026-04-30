@@ -3,53 +3,22 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Message, PlayerSlot } from '@/lib/supabase'
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 type MessageThreadProps = {
-  /** All messages for the current question, ordered chronologically. */
-  messages: Message[]
-  /** Slot of the viewing player (1 or 2) — used to align bubbles. */
-  mySlot: PlayerSlot
-  /** Display name of the viewing player — used for send attribution. */
-  myName: string
-  /** Called with trimmed content when the player submits a message. */
-  onSend: (content: string) => Promise<void>
-  /** True while a POST /api/messages request is in-flight. */
-  isSending: boolean
-  /**
-   * Tier accent color from TIER_CONFIG[tier].primary.
-   * Passed from PickModal so the thread is visually cohesive with the card.
-   */
-  accentColor: string
-  /**
-   * Called on every keystroke, throttled internally to once per 1 500 ms,
-   * so the parent can broadcast TYPING without flooding the channel.
-   */
-  onTyping: () => void
-  /**
-   * True when the other player is currently typing in this thread.
-   * Drives the animated "typing..." indicator bubble.
-   */
+  messages:      Message[]
+  mySlot:        PlayerSlot
+  myName:        string
+  onSend:        (content: string) => Promise<void>
+  isSending:     boolean
+  accentColor:   string
+  onTyping:      () => void
   isOtherTyping: boolean
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString('en-NG', {
-    hour:   '2-digit',
-    minute: '2-digit',
-    hour12: false,
+    hour: '2-digit', minute: '2-digit', hour12: false,
   })
 }
-
-// ---------------------------------------------------------------------------
-// MessageThread
-// ---------------------------------------------------------------------------
 
 export function MessageThread({
   messages,
@@ -61,28 +30,22 @@ export function MessageThread({
   isOtherTyping,
 }: MessageThreadProps) {
   const [draft,    setDraft]    = useState('')
-  const scrollRef   = useRef<HTMLDivElement>(null)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const scrollRef               = useRef<HTMLDivElement>(null)
+  const textareaRef             = useRef<HTMLTextAreaElement>(null)
+  const lastTypingRef           = useRef<number>(0)
+  const THROTTLE_MS             = 1_500
 
-  // Throttle ref: timestamp of the last TYPING broadcast we fired.
-  // Stored in a ref so it never causes a re-render.
-  const lastTypingRef = useRef<number>(0)
-  const THROTTLE_MS   = 1_500
-
-  // Scroll to bottom whenever messages change or typing indicator appears.
   useEffect(() => {
     const el = scrollRef.current
     if (el) el.scrollTop = el.scrollHeight
   }, [messages, isOtherTyping])
 
-  // Auto-resize the textarea to fit its content (up to 96px).
   function handleInput(e: React.ChangeEvent<HTMLTextAreaElement>) {
     const ta = e.target
     setDraft(ta.value)
     ta.style.height = 'auto'
     ta.style.height = Math.min(ta.scrollHeight, 96) + 'px'
 
-    // Fire onTyping at most once per THROTTLE_MS.
     const now = Date.now()
     if (now - lastTypingRef.current >= THROTTLE_MS) {
       lastTypingRef.current = now
@@ -93,18 +56,13 @@ export function MessageThread({
   async function handleSend() {
     const trimmed = draft.trim()
     if (!trimmed || isSending) return
-
     setDraft('')
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto'
-    }
-
+    if (textareaRef.current) textareaRef.current.style.height = 'auto'
     await onSend(trimmed)
     textareaRef.current?.focus()
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    // Enter sends; Shift+Enter inserts a newline.
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSend()
@@ -122,9 +80,7 @@ export function MessageThread({
           from { opacity: 0; transform: translateY(5px); }
           to   { opacity: 1; transform: translateY(0); }
         }
-        @keyframes mt-spin {
-          to { transform: rotate(360deg); }
-        }
+        @keyframes mt-spin { to { transform: rotate(360deg); } }
         @keyframes mt-typing-dot {
           0%, 60%, 100% { transform: translateY(0);    opacity: 0.4; }
           30%            { transform: translateY(-3px); opacity: 1;   }
@@ -132,11 +88,10 @@ export function MessageThread({
 
         .mt-font-sans { font-family: 'DM Sans', system-ui, sans-serif; }
 
-        /* Thin scrollbar for the message list */
         .mt-scroll::-webkit-scrollbar        { width: 3px; }
         .mt-scroll::-webkit-scrollbar-track  { background: transparent; }
         .mt-scroll::-webkit-scrollbar-thumb  {
-          background: rgba(255,255,255,0.08);
+          background: var(--th-border-2);
           border-radius: 99px;
         }
 
@@ -157,21 +112,18 @@ export function MessageThread({
 
       <div className="mt-font-sans" style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
 
-        {/* Section divider */}
+        {/* Divider */}
         <div style={{
           height: 1,
-          background: 'rgba(255,255,255,0.06)',
+          background: 'var(--th-border)',
           margin: '14px 0 12px',
           flexShrink: 0,
         }} />
 
         {/* Thread label */}
         <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          marginBottom: 10,
-          flexShrink: 0,
+          display: 'flex', alignItems: 'center', gap: 6,
+          marginBottom: 10, flexShrink: 0,
         }}>
           <div style={{
             width: 5, height: 5, borderRadius: '50%',
@@ -180,7 +132,7 @@ export function MessageThread({
             flexShrink: 0,
           }} />
           <span style={{
-            color: '#334155',
+            color: 'var(--th-text-3)',
             fontSize: '0.60rem',
             fontWeight: 600,
             letterSpacing: '0.14em',
@@ -191,7 +143,7 @@ export function MessageThread({
           {messages.length > 0 && (
             <span style={{
               marginLeft: 'auto',
-              color: '#1e2535',
+              color: 'var(--th-text-4)',
               fontSize: '0.60rem',
               fontWeight: 500,
             }}>
@@ -205,25 +157,23 @@ export function MessageThread({
           ref={scrollRef}
           className="mt-scroll"
           style={{
-            overflowY:     'auto',
-            maxHeight:     192,
-            minHeight:     56,
-            display:       'flex',
+            overflowY: 'auto',
+            maxHeight: 192,
+            minHeight: 56,
+            display: 'flex',
             flexDirection: 'column',
-            gap:           8,
-            paddingRight:  4,
-            marginBottom:  10,
+            gap: 8,
+            paddingRight: 4,
+            marginBottom: 10,
           }}
         >
           {messages.length === 0 && !isOtherTyping ? (
             <div style={{
-              display:        'flex',
-              alignItems:     'center',
-              justifyContent: 'center',
-              height:         56,
-              color:          '#1e2535',
-              fontSize:       '0.72rem',
-              fontStyle:      'italic',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              height: 56,
+              color: 'var(--th-text-4)',
+              fontSize: '0.72rem',
+              fontStyle: 'italic',
             }}>
               Be the first to respond...
             </div>
@@ -236,50 +186,46 @@ export function MessageThread({
                     key={msg.id}
                     className="mt-msg"
                     style={{
-                      display:       'flex',
+                      display: 'flex',
                       flexDirection: 'column',
-                      alignItems:    isMe ? 'flex-end' : 'flex-start',
-                      gap:           3,
+                      alignItems: isMe ? 'flex-end' : 'flex-start',
+                      gap: 3,
                     }}
                   >
-                    {/* Name + time row */}
+                    {/* Name + time */}
                     <div style={{
-                      display:       'flex',
-                      alignItems:    'center',
-                      gap:           5,
+                      display: 'flex', alignItems: 'center', gap: 5,
                       flexDirection: isMe ? 'row-reverse' : 'row',
                     }}>
                       <span style={{
-                        color:         isMe ? `${accentColor}99` : '#475569',
-                        fontSize:      '0.58rem',
-                        fontWeight:    600,
+                        color: isMe ? `${accentColor}99` : 'var(--th-text-3)',
+                        fontSize: '0.58rem',
+                        fontWeight: 600,
                         letterSpacing: '0.06em',
                       }}>
                         {msg.player_name}
                       </span>
-                      <span style={{ color: '#1e2535', fontSize: '0.55rem' }}>
+                      <span style={{ color: 'var(--th-text-4)', fontSize: '0.55rem' }}>
                         {formatTime(msg.created_at)}
                       </span>
                     </div>
 
                     {/* Bubble */}
                     <div style={{
-                      maxWidth:     '84%',
-                      padding:      '8px 12px',
-                      borderRadius: isMe
-                        ? '14px 14px 4px 14px'
-                        : '14px 14px 14px 4px',
-                      background:   isMe
+                      maxWidth: '84%',
+                      padding: '8px 12px',
+                      borderRadius: isMe ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+                      background: isMe
                         ? `${accentColor}14`
-                        : 'rgba(255,255,255,0.04)',
-                      border:       isMe
+                        : 'var(--th-surface)',
+                      border: isMe
                         ? `1px solid ${accentColor}2a`
-                        : '1px solid rgba(255,255,255,0.06)',
-                      color:        isMe ? '#d1d9e6' : '#94a3b8',
-                      fontSize:     '0.82rem',
-                      fontWeight:   400,
-                      lineHeight:   1.52,
-                      wordBreak:    'break-word',
+                        : '1px solid var(--th-border)',
+                      color: isMe ? 'var(--th-fg)' : 'var(--th-text-2)',
+                      fontSize: '0.82rem',
+                      fontWeight: 400,
+                      lineHeight: 1.52,
+                      wordBreak: 'break-word',
                     }}>
                       {msg.content}
                     </div>
@@ -287,29 +233,25 @@ export function MessageThread({
                 )
               })}
 
-              {/* Typing indicator — shown when the other player is composing */}
+              {/* Typing indicator */}
               {isOtherTyping && (
                 <div
                   className="mt-msg"
                   style={{
-                    display:       'flex',
-                    flexDirection: 'column',
-                    alignItems:    'flex-start',
-                    gap:           3,
+                    display: 'flex', flexDirection: 'column',
+                    alignItems: 'flex-start', gap: 3,
                   }}
                 >
                   <div style={{
-                    padding:      '10px 14px',
+                    padding: '10px 14px',
                     borderRadius: '14px 14px 14px 4px',
-                    background:   'rgba(255,255,255,0.04)',
-                    border:       '1px solid rgba(255,255,255,0.06)',
-                    display:      'flex',
-                    alignItems:   'center',
-                    gap:           4,
+                    background: 'var(--th-surface)',
+                    border: '1px solid var(--th-border)',
+                    display: 'flex', alignItems: 'center', gap: 4,
                   }}>
-                    <span className="mt-typing-dot-1" style={{ display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: '#475569' }} />
-                    <span className="mt-typing-dot-2" style={{ display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: '#475569' }} />
-                    <span className="mt-typing-dot-3" style={{ display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: '#475569' }} />
+                    <span className="mt-typing-dot-1" style={{ display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: 'var(--th-text-3)' }} />
+                    <span className="mt-typing-dot-2" style={{ display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: 'var(--th-text-3)' }} />
+                    <span className="mt-typing-dot-3" style={{ display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: 'var(--th-text-3)' }} />
                   </div>
                 </div>
               )}
@@ -318,12 +260,7 @@ export function MessageThread({
         </div>
 
         {/* Input row */}
-        <div style={{
-          display:    'flex',
-          gap:        8,
-          alignItems: 'flex-end',
-          flexShrink: 0,
-        }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexShrink: 0 }}>
           <textarea
             ref={textareaRef}
             value={draft}
@@ -333,25 +270,25 @@ export function MessageThread({
             maxLength={500}
             rows={1}
             style={{
-              flex:         1,
-              resize:       'none',
+              flex: 1,
+              resize: 'none',
               borderRadius: 12,
-              background:   '#070810',
-              border:       '1px solid rgba(255,255,255,0.07)',
-              color:        '#d1d9e6',
-              fontSize:     '0.82rem',
-              padding:      '9px 12px',
-              fontFamily:   "'DM Sans', system-ui, sans-serif",
-              outline:      'none',
-              lineHeight:   1.45,
-              minHeight:    38,
-              maxHeight:    96,
-              overflowY:    'auto',
-              transition:   'border-color 0.2s ease',
-              boxSizing:    'border-box',
+              background: 'var(--th-input-bg)',
+              border: '1px solid var(--th-input-border)',
+              color: 'var(--th-fg)',
+              fontSize: '0.82rem',
+              padding: '9px 12px',
+              fontFamily: "'DM Sans', system-ui, sans-serif",
+              outline: 'none',
+              lineHeight: 1.45,
+              minHeight: 38,
+              maxHeight: 96,
+              overflowY: 'auto',
+              transition: 'border-color 0.2s ease',
+              boxSizing: 'border-box',
             }}
-            onFocus={e => (e.target.style.borderColor = 'rgba(255,255,255,0.13)')}
-            onBlur={e  => (e.target.style.borderColor = 'rgba(255,255,255,0.07)')}
+            onFocus={e => (e.target.style.borderColor = 'var(--th-border-2)')}
+            onBlur={e  => (e.target.style.borderColor = 'var(--th-input-border)')}
           />
 
           {/* Send button */}
@@ -360,55 +297,37 @@ export function MessageThread({
             disabled={!canSend}
             aria-label="Send message"
             style={{
-              flexShrink:     0,
-              width:          38,
-              height:         38,
-              borderRadius:   11,
-              background:     canSend
-                ? `${accentColor}18`
-                : 'rgba(255,255,255,0.03)',
-              border:         canSend
+              flexShrink: 0,
+              width: 38, height: 38,
+              borderRadius: 11,
+              background: canSend ? `${accentColor}18` : 'var(--th-border)',
+              border: canSend
                 ? `1px solid ${accentColor}33`
-                : '1px solid rgba(255,255,255,0.05)',
-              color:          canSend ? accentColor : '#1e2535',
-              cursor:         canSend ? 'pointer' : 'default',
-              display:        'flex',
-              alignItems:     'center',
-              justifyContent: 'center',
-              transition:     'all 0.18s ease',
+                : '1px solid var(--th-border)',
+              color: canSend ? accentColor : 'var(--th-text-4)',
+              cursor: canSend ? 'pointer' : 'default',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'all 0.18s ease',
             }}
           >
             {isSending ? (
               <div className="mt-send-spinner" style={{ color: accentColor }} />
             ) : (
-              /* Paper-plane send icon */
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                <path
-                  d="M14.5 1.5L1 6.5l5 2 2 5 1.5-4.5L14.5 1.5z"
-                  fill="currentColor"
-                  fillOpacity="0.88"
-                  strokeLinejoin="round"
-                />
-                <line
-                  x1="6" y1="8.5"
-                  x2="9.5" y2="5"
-                  stroke="currentColor"
-                  strokeWidth="0.8"
-                  strokeOpacity="0.5"
-                  strokeLinecap="round"
-                />
+                <path d="M14.5 1.5L1 6.5l5 2 2 5 1.5-4.5L14.5 1.5z" fill="currentColor" fillOpacity="0.88" strokeLinejoin="round" />
+                <line x1="6" y1="8.5" x2="9.5" y2="5" stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.5" strokeLinecap="round" />
               </svg>
             )}
           </button>
         </div>
 
-        {/* Character count — only appears near the limit */}
+        {/* Character count */}
         {draft.length > 420 && (
           <div style={{
-            textAlign:  'right',
-            color:      draft.length > 480 ? '#ef4444' : '#334155',
-            fontSize:   '0.58rem',
-            marginTop:  4,
+            textAlign: 'right',
+            color: draft.length > 480 ? '#ef4444' : 'var(--th-text-3)',
+            fontSize: '0.58rem',
+            marginTop: 4,
             transition: 'color 0.2s ease',
           }}>
             {500 - draft.length} left

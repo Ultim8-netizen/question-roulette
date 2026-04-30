@@ -2,24 +2,13 @@
 
 import { useState } from 'react'
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 type DrawButtonProps = {
-  /** True when it is this client's turn to draw */
   isMyTurn:   boolean
-  /** True while the /api/pick request is in flight */
   isLoading:  boolean
-  /** True when no custom question proposal is currently pending */
   canPropose: boolean
   onDraw:     () => void
   onPropose:  () => void
 }
-
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
 
 export function DrawButton({
   isMyTurn,
@@ -48,8 +37,8 @@ export function DrawButton({
           100% { transform: scale(1.10); opacity: 0;    }
         }
         @keyframes db-breathe {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0),   0 8px 40px rgba(0,0,0,0.55); }
-          50%       { box-shadow: 0 0 28px 4px rgba(255,255,255,0.045), 0 8px 40px rgba(0,0,0,0.55); }
+          0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0),        0 8px 40px rgba(0,0,0,0.30); }
+          50%       { box-shadow: 0 0 28px 4px rgba(255,255,255,0.04), 0 8px 40px rgba(0,0,0,0.30); }
         }
         @keyframes db-sweep {
           0%   { transform: translateX(-140%) skewX(-16deg); }
@@ -60,12 +49,12 @@ export function DrawButton({
           50%       { transform: rotate(-9deg) translateY(-1px); }
         }
         @keyframes db-fan-2 {
-          0%, 100% { transform: rotate(0deg) translateY(0);     }
-          50%       { transform: rotate(0deg) translateY(-2px);  }
+          0%, 100% { transform: rotate(0deg)  translateY(0);    }
+          50%       { transform: rotate(0deg)  translateY(-2px); }
         }
         @keyframes db-fan-3 {
-          0%, 100% { transform: rotate(6deg) translateY(0);     }
-          50%       { transform: rotate(9deg) translateY(-1px);  }
+          0%, 100% { transform: rotate(6deg)  translateY(0);    }
+          50%       { transform: rotate(9deg)  translateY(-1px); }
         }
         @keyframes db-link-in {
           from { opacity: 0; transform: translateY(4px); }
@@ -88,11 +77,10 @@ export function DrawButton({
         className="db-font-sans fixed bottom-0 left-0 right-0 z-40 flex flex-col items-center"
         style={{
           padding: '12px 20px max(20px, env(safe-area-inset-bottom)) 20px',
-          background: 'linear-gradient(to top, #020308 55%, transparent)',
+          background: 'linear-gradient(to top, var(--th-bg) 55%, transparent)',
           pointerEvents: 'none',
         }}
       >
-
         {/* "Add a question" ghost link */}
         {isMyTurn && canPropose && !isLoading && (
           <button
@@ -103,7 +91,7 @@ export function DrawButton({
               border: 'none',
               padding: '6px 14px',
               cursor: 'pointer',
-              color: '#334155',
+              color: 'var(--th-text-3)',
               fontSize: '0.72rem',
               fontWeight: 500,
               letterSpacing: '0.06em',
@@ -112,8 +100,8 @@ export function DrawButton({
               gap: 6,
               transition: 'color 0.2s',
             }}
-            onMouseEnter={e => (e.currentTarget.style.color = '#94a3b8')}
-            onMouseLeave={e => (e.currentTarget.style.color = '#334155')}
+            onMouseEnter={e => (e.currentTarget.style.color = 'var(--th-text-2)')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'var(--th-text-3)')}
             onClick={onPropose}
           >
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
@@ -132,7 +120,7 @@ export function DrawButton({
           {isMyTurn && !isLoading && (
             <div
               className="db-pulse-ring absolute inset-0 rounded-[20px] pointer-events-none"
-              style={{ border: '1.5px solid rgba(255,255,255,0.18)' }}
+              style={{ border: '1.5px solid var(--th-border-2)' }}
             />
           )}
 
@@ -145,13 +133,13 @@ export function DrawButton({
               height: 64,
               borderRadius: 20,
               border: isMyTurn
-                ? '1.5px solid rgba(255,255,255,0.13)'
-                : '1.5px solid rgba(255,255,255,0.04)',
+                ? '1.5px solid var(--th-border-2)'
+                : '1.5px solid var(--th-border)',
               background: isMyTurn
                 ? pressed
-                  ? 'linear-gradient(160deg, #111318 0%, #0c0d12 100%)'
-                  : 'linear-gradient(160deg, #1a1c25 0%, #131520 100%)'
-                : 'linear-gradient(160deg, #080910 0%, #06070d 100%)',
+                  ? 'var(--th-surface-2)'
+                  : 'var(--th-surface)'
+                : 'var(--th-bg-alt)',
               cursor: isMyTurn && !isLoading ? 'pointer' : 'default',
               transform: pressed ? 'scale(0.975)' : 'scale(1)',
               transition: 'transform 0.18s cubic-bezier(0.34,1.56,0.64,1), background 0.4s ease, border-color 0.4s ease',
@@ -163,7 +151,6 @@ export function DrawButton({
               gap: 14,
             }}
           >
-
             {/* Loading shimmer sweep */}
             {isLoading && (
               <div
@@ -171,44 +158,47 @@ export function DrawButton({
                 style={{
                   top: 0, bottom: 0,
                   width: '40%',
-                  background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.055), transparent)',
+                  background: 'linear-gradient(90deg, transparent, var(--th-border-2), transparent)',
                 }}
               />
             )}
 
             {/* Animated card-fan icon */}
             <div className="relative shrink-0" style={{ width: 30, height: 28 }}>
+              {/* Back card */}
               <div
                 className={isMyTurn && !isLoading ? 'db-fan-1' : ''}
                 style={{
                   position: 'absolute', bottom: 0, left: 0,
                   width: 20, height: 26, borderRadius: 5,
-                  background: isMyTurn ? '#1e2535' : '#0d0f16',
-                  border: `1px solid ${isMyTurn ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.03)'}`,
+                  background: isMyTurn ? 'var(--th-surface-2)' : 'var(--th-bg-alt)',
+                  border: `1px solid var(--th-border)`,
                   transformOrigin: 'bottom center',
                   transform: 'rotate(-6deg)',
                   transition: 'background 0.4s ease',
                 }}
               />
+              {/* Mid card */}
               <div
                 className={isMyTurn && !isLoading ? 'db-fan-2' : ''}
                 style={{
                   position: 'absolute', bottom: 0, left: 5,
                   width: 20, height: 26, borderRadius: 5,
-                  background: isMyTurn ? '#252c3d' : '#0e1018',
-                  border: `1px solid ${isMyTurn ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.04)'}`,
+                  background: isMyTurn ? 'var(--th-surface)' : 'var(--th-bg-alt)',
+                  border: `1px solid var(--th-border)`,
                   transformOrigin: 'bottom center',
                   transform: 'rotate(0deg)',
                   transition: 'background 0.4s ease',
                 }}
               />
+              {/* Front card */}
               <div
                 className={isMyTurn && !isLoading ? 'db-fan-3' : ''}
                 style={{
                   position: 'absolute', bottom: 0, right: 0,
                   width: 20, height: 26, borderRadius: 5,
-                  background: isMyTurn ? '#2c3550' : '#0f1119',
-                  border: `1px solid ${isMyTurn ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.05)'}`,
+                  background: isMyTurn ? 'var(--th-surface-2)' : 'var(--th-bg-alt)',
+                  border: `1px solid var(--th-border-2)`,
                   transformOrigin: 'bottom center',
                   transform: 'rotate(6deg)',
                   transition: 'background 0.4s ease',
@@ -221,7 +211,7 @@ export function DrawButton({
               <span
                 className="db-font-serif"
                 style={{
-                  color: isMyTurn ? '#e8ecf4' : '#1e2535',
+                  color: isMyTurn ? 'var(--th-text-1)' : 'var(--th-text-4)',
                   fontSize: '1.15rem',
                   fontWeight: 600,
                   letterSpacing: '0.02em',
@@ -234,7 +224,7 @@ export function DrawButton({
               <span
                 className="db-font-sans"
                 style={{
-                  color: isMyTurn ? '#334155' : '#111520',
+                  color: isMyTurn ? 'var(--th-text-3)' : 'var(--th-text-4)',
                   fontSize: '0.62rem',
                   fontWeight: 400,
                   letterSpacing: '0.10em',
