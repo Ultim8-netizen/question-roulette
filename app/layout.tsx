@@ -15,21 +15,21 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "abyssprotocol — question roulette",
+  title: "room 13 — question roulette",
   description:
     "A two-player game of blind draws. Light surface. Dark depths. No map.",
   metadataBase: new URL("https://abyssprotocol.vercel.app"),
   openGraph: {
-    title: "abyssprotocol — question roulette",
+    title: "room 13 — question roulette",
     description:
       "A two-player game of blind draws. Light surface. Dark depths. No map.",
-    siteName: "abyssprotocol",
+    siteName: "room 13 by abyss protocol",
     locale: "en_US",
     type: "website",
   },
   twitter: {
     card: "summary",
-    title: "abyssprotocol — question roulette",
+    title: "room 13 — question roulette",
     description:
       "A two-player game of blind draws. Light surface. Dark depths. No map.",
   },

@@ -12,14 +12,10 @@ const HTP_SEEN_KEY = 'abyss-htp-seen'
 
 // ---------------------------------------------------------------------------
 // Lazy initializer — runs once on the client at first render.
-// Returns true  → show overlay (first visit).
-// Returns false → skip overlay (returning visitor, or SSR fallback).
-// Never calls setState; avoids react-hooks/set-state-in-effect entirely.
-// Mirrors the pattern used in ThemeContext.tsx (readStoredId).
 // ---------------------------------------------------------------------------
 
 function readHtpSeen(): boolean {
-  if (typeof window === 'undefined') return false // SSR: never show overlay
+  if (typeof window === 'undefined') return false
   try {
     return !localStorage.getItem(HTP_SEEN_KEY)
   } catch {
@@ -27,14 +23,47 @@ function readHtpSeen(): boolean {
   }
 }
 
-function AbyssSignil({ size = 48 }: { size?: number }) {
+// ---------------------------------------------------------------------------
+// Room 13 logo mark — wheel + card fan motif, theme-aware.
+// Replaces the old AbyssSignil everywhere on this page.
+// ---------------------------------------------------------------------------
+
+function Room13Mark({ size = 48 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden="true">
-      <circle cx="16" cy="16" r="9" stroke="var(--th-brand)" strokeWidth="1.1"
-        strokeDasharray="22 6" strokeDashoffset="3"/>
-      <line x1="16" y1="4" x2="16" y2="28" stroke="var(--th-brand)"
-        strokeWidth="1.4" strokeLinecap="round"/>
-      <circle cx="16" cy="16" r="2" fill="var(--th-brand)"/>
+      {/* wheel */}
+      <circle cx="16" cy="20" r="10" fill="var(--th-surface)" stroke="var(--th-brand)" strokeWidth="1.1"/>
+      <circle cx="16" cy="20" r="7.5" fill="none" stroke="var(--th-brand)" strokeWidth="0.4" opacity="0.35"/>
+      {/* spokes (bottom half visible below card) */}
+      <g stroke="var(--th-brand)" strokeWidth="0.65" strokeLinecap="round" opacity="0.55">
+        <line x1="21.3" y1="14.7" x2="23.1" y2="12.9"/>
+        <line x1="23.5" y1="20" x2="26" y2="20"/>
+        <line x1="21.3" y1="25.3" x2="23.1" y2="27.1"/>
+        <line x1="16" y1="27.5" x2="16" y2="30"/>
+        <line x1="10.7" y1="25.3" x2="8.9" y2="27.1"/>
+        <line x1="8.5" y1="20" x2="6" y2="20"/>
+        <line x1="10.7" y1="14.7" x2="8.9" y2="12.9"/>
+      </g>
+      {/* hub */}
+      <circle cx="16" cy="20" r="1.8" fill="var(--th-brand)"/>
+      {/* center card on top */}
+      <rect x="11" y="5" width="10" height="14" rx="1.8" fill="var(--th-surface)" stroke="var(--th-brand)" strokeWidth="1.2"/>
+      <line x1="13.5" y1="9"    x2="18.5" y2="9"    stroke="var(--th-brand)" strokeWidth="0.9" strokeLinecap="round" opacity="0.60"/>
+      <line x1="13.5" y1="11.5" x2="18.5" y2="11.5" stroke="var(--th-brand)" strokeWidth="0.9" strokeLinecap="round" opacity="0.38"/>
+    </svg>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Small brand mark for watermarks
+// ---------------------------------------------------------------------------
+
+function Room13MarkSmall({ size = 10, opacity = 1 }: { size?: number; opacity?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden="true" style={{ opacity, flexShrink: 0 }}>
+      <circle cx="16" cy="20" r="10" fill="var(--th-surface)" stroke="var(--th-brand)" strokeWidth="1.1"/>
+      <circle cx="16" cy="20" r="1.8" fill="var(--th-brand)"/>
+      <rect x="11" y="5" width="10" height="14" rx="1.8" fill="var(--th-surface)" stroke="var(--th-brand)" strokeWidth="1.2"/>
     </svg>
   )
 }
@@ -45,8 +74,6 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState<string | null>(null)
 
-  // Lazy initializer: reads localStorage synchronously on first render.
-  // No useEffect needed — no setState-in-effect violation.
   const [showHtp, setShowHtp] = useState<boolean>(readHtpSeen)
 
   function dismissHtp() {
@@ -81,11 +108,11 @@ export default function HomePage() {
         @keyframes hp-orb-2 { 0%,100%{transform:translate(0,0) scale(1);opacity:0.35} 50%{transform:translate(-14px,16px) scale(1.04);opacity:0.50} }
         @keyframes hp-orb-3 { 0%,100%{transform:translate(0,0) scale(1);opacity:0.30} 50%{transform:translate(10px,12px) scale(1.05);opacity:0.45} }
         @keyframes hp-orb-4 { 0%,100%{transform:translate(0,0) scale(1);opacity:0.28} 50%{transform:translate(-8px,-14px) scale(1.03);opacity:0.40} }
-        @keyframes hp-sigil-pulse{ 0%,100%{opacity:0.75} 50%{opacity:1} }
+        @keyframes hp-mark-pulse{ 0%,100%{opacity:0.75} 50%{opacity:1} }
         @keyframes hp-wordmark-in{ from{opacity:0;transform:translateY(10px);letter-spacing:0.30em} to{opacity:1;transform:translateY(0);letter-spacing:0.22em} }
         @keyframes hp-sub-in  { from{opacity:0;transform:translateY(8px)}  to{opacity:1;transform:translateY(0)} }
         @keyframes hp-form-in { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes hp-sigil-in{ from{opacity:0;transform:translateY(-10px) scale(0.92)} to{opacity:1;transform:translateY(0) scale(1)} }
+        @keyframes hp-mark-in { from{opacity:0;transform:translateY(-10px) scale(0.92)} to{opacity:1;transform:translateY(0) scale(1)} }
         @keyframes hp-divider-in{ from{transform:scaleX(0);opacity:0} to{transform:scaleX(1);opacity:1} }
         @keyframes hp-btn-shimmer{ 0%{transform:translateX(-120%) skewX(-14deg);opacity:0} 10%{opacity:1} 90%{opacity:1} 100%{transform:translateX(260%) skewX(-14deg);opacity:0} }
         @keyframes hp-tier-dot{ 0%,100%{opacity:0.35;transform:scale(1)} 50%{opacity:0.75;transform:scale(1.2)} }
@@ -94,8 +121,8 @@ export default function HomePage() {
         .hp-orb-2{animation:hp-orb-2 11s ease-in-out infinite}
         .hp-orb-3{animation:hp-orb-3 10s ease-in-out infinite}
         .hp-orb-4{animation:hp-orb-4 12s ease-in-out infinite}
-        .hp-sigil-in   {animation:hp-sigil-in    0.50s cubic-bezier(0.22,1,0.36,1) 0.08s both}
-        .hp-sigil-pulse{animation:hp-sigil-pulse 3.5s  ease-in-out 0.6s infinite}
+        .hp-mark-in    {animation:hp-mark-in     0.50s cubic-bezier(0.22,1,0.36,1) 0.08s both}
+        .hp-mark-pulse {animation:hp-mark-pulse  3.5s  ease-in-out 0.6s infinite}
         .hp-wordmark-in{animation:hp-wordmark-in 0.65s cubic-bezier(0.22,1,0.36,1) 0.18s both}
         .hp-sub-in     {animation:hp-sub-in      0.50s cubic-bezier(0.22,1,0.36,1) 0.32s both}
         .hp-form-in    {animation:hp-form-in     0.50s cubic-bezier(0.22,1,0.36,1) 0.44s both}
@@ -161,18 +188,31 @@ export default function HomePage() {
           position: 'relative', zIndex: 1, width: '100%', maxWidth: 360,
           display: 'flex', flexDirection: 'column', alignItems: 'center',
         }}>
-          <div className="hp-sigil-in hp-sigil-pulse" style={{ marginBottom: 28 }}>
-            <AbyssSignil size={44} />
+
+          {/* Logo mark */}
+          <div className="hp-mark-in hp-mark-pulse" style={{ marginBottom: 24 }}>
+            <Room13Mark size={52} />
           </div>
 
+          {/* Wordmark: "room 13" */}
           <h1 className="hp-wordmark-in" style={{
             fontFamily: 'var(--font-brand-mono)',
-            color: 'var(--th-brand)', fontSize: '1.05rem', fontWeight: 500,
+            color: 'var(--th-brand)', fontSize: '1.10rem', fontWeight: 500,
             letterSpacing: '0.22em', textTransform: 'lowercase',
-            margin: '0 0 6px', textAlign: 'center',
+            margin: '0 0 4px', textAlign: 'center',
           }}>
-            abyssprotocol
+            room 13
           </h1>
+
+          {/* Creator attribution */}
+          <div className="hp-sub-in" style={{
+            fontFamily: 'var(--font-brand-mono)',
+            color: 'var(--th-text-4)', fontSize: '0.56rem', fontWeight: 400,
+            letterSpacing: '0.18em', textTransform: 'lowercase',
+            marginBottom: 14, textAlign: 'center',
+          }}>
+            by abyss protocol
+          </div>
 
           <div className="hp-divider-in" style={{
             display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20,
@@ -265,7 +305,7 @@ export default function HomePage() {
                   pointerEvents: 'none',
                 }} />
               )}
-              {loading ? 'entering the abyss...' : 'begin'}
+              {loading ? 'entering room 13...' : 'begin'}
             </button>
           </div>
 
@@ -292,17 +332,18 @@ export default function HomePage() {
             Game starts when they join.
           </p>
 
+          {/* Footer watermark */}
           <div style={{
             position: 'absolute', bottom: -80, left: 0, right: 0,
             display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6,
           }}>
-            <AbyssSignil size={10} />
+            <Room13MarkSmall size={10} opacity={0.5} />
             <span style={{
               fontFamily: 'var(--font-brand-mono)',
               color: 'var(--th-text-4)', fontSize: '0.60rem',
               letterSpacing: '0.18em', textTransform: 'lowercase',
             }}>
-              abyssprotocol
+              room 13
             </span>
           </div>
         </div>

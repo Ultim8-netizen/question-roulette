@@ -12,19 +12,31 @@ import { DrawButton } from '@/components/DrawButton'
 import { PickModal } from '@/components/PickModal'
 
 // ---------------------------------------------------------------------------
-// Brand sigil
+// Room 13 logo mark — compact, theme-aware.
 // ---------------------------------------------------------------------------
 
-function AbyssSignil({ size = 10, opacity = 1 }: { size?: number; opacity?: number }) {
+function Room13Mark({ size = 10, opacity = 1 }: { size?: number; opacity?: number }) {
   return (
     <svg
       width={size} height={size} viewBox="0 0 32 32"
       fill="none" xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true" style={{ opacity, flexShrink: 0 }}
     >
-      <circle cx="16" cy="16" r="9" stroke="var(--th-brand)" strokeWidth="1.4" strokeDasharray="22 6" strokeDashoffset="3" />
-      <line x1="16" y1="4" x2="16" y2="28" stroke="var(--th-brand)" strokeWidth="1.6" strokeLinecap="round" />
-      <circle cx="16" cy="16" r="2" fill="var(--th-brand)" />
+      <circle cx="16" cy="20" r="10" fill="var(--th-surface)" stroke="var(--th-brand)" strokeWidth="1.1"/>
+      <circle cx="16" cy="20" r="7.5" fill="none" stroke="var(--th-brand)" strokeWidth="0.4" opacity="0.35"/>
+      <g stroke="var(--th-brand)" strokeWidth="0.65" strokeLinecap="round" opacity="0.55">
+        <line x1="21.3" y1="14.7" x2="23.1" y2="12.9"/>
+        <line x1="23.5" y1="20"   x2="26"   y2="20"/>
+        <line x1="21.3" y1="25.3" x2="23.1" y2="27.1"/>
+        <line x1="16"   y1="27.5" x2="16"   y2="30"/>
+        <line x1="10.7" y1="25.3" x2="8.9"  y2="27.1"/>
+        <line x1="8.5"  y1="20"   x2="6"    y2="20"/>
+        <line x1="10.7" y1="14.7" x2="8.9"  y2="12.9"/>
+      </g>
+      <circle cx="16" cy="20" r="1.8" fill="var(--th-brand)"/>
+      <rect x="11" y="5" width="10" height="14" rx="1.8" fill="var(--th-surface)" stroke="var(--th-brand)" strokeWidth="1.2"/>
+      <line x1="13.5" y1="9"    x2="18.5" y2="9"    stroke="var(--th-brand)" strokeWidth="0.9" strokeLinecap="round" opacity="0.60"/>
+      <line x1="13.5" y1="11.5" x2="18.5" y2="11.5" stroke="var(--th-brand)" strokeWidth="0.9" strokeLinecap="round" opacity="0.38"/>
     </svg>
   )
 }
@@ -40,21 +52,21 @@ function BrandWatermark() {
       gap: 5, opacity: 0.18, userSelect: 'none', pointerEvents: 'none',
       marginTop: 24,
     }}>
-      <AbyssSignil size={9} opacity={1} />
+      <Room13Mark size={10} opacity={1} />
       <span style={{
         fontFamily:    "'Geist Mono', ui-monospace, monospace",
         fontSize:      '0.55rem', fontWeight: 400,
         letterSpacing: '0.18em', color: 'var(--th-brand)',
         textTransform: 'lowercase',
       }}>
-        abyssprotocol
+        room 13
       </span>
     </div>
   )
 }
 
 // ---------------------------------------------------------------------------
-// Tier config (local — for inline modals that don't import tierConfig)
+// Tier config (local)
 // ---------------------------------------------------------------------------
 
 const TIER_LABELS: Record<QuestionTier, string> = {
@@ -123,7 +135,6 @@ function ProposeModal({
               </button>
             </div>
 
-            {/* Textarea */}
             <textarea
               value={text}
               onChange={e => setText(e.target.value)}
@@ -178,7 +189,6 @@ function ProposeModal({
               </div>
             </div>
 
-            {/* Submit */}
             <button
               disabled={!text.trim() || loading}
               onClick={() => text.trim() && onSubmit(text.trim(), tier)}
@@ -230,7 +240,6 @@ function ConsentBanner({
           padding:    '16px 18px',
         }}
       >
-        {/* Label row */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
           <div style={{
             width: 7, height: 7, borderRadius: '50%',
@@ -250,7 +259,6 @@ function ConsentBanner({
           </span>
         </div>
 
-        {/* Question text */}
         <p style={{
           fontFamily:   "'Cormorant Garamond',serif",
           color:        'var(--th-text-1)', fontSize: '0.92rem',
@@ -259,7 +267,6 @@ function ConsentBanner({
           &ldquo;{proposal.text}&rdquo;
         </p>
 
-        {/* Actions */}
         <div style={{ display: 'flex', gap: 8 }}>
           <button
             onClick={onDecline} disabled={loading}
@@ -336,23 +343,31 @@ function JoinScreen({ onJoin, loading }: { onJoin: (name: string) => void; loadi
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=DM+Sans:wght@300;400;500&display=swap');
         @keyframes js-in { from { opacity:0; transform:translateY(20px) } to { opacity:1; transform:translateY(0) } }
-        @keyframes js-sigil-pulse { 0%,100%{opacity:0.65} 50%{opacity:1} }
+        @keyframes js-mark-pulse { 0%,100%{opacity:0.65} 50%{opacity:1} }
         .js-root  { animation: js-in 0.45s cubic-bezier(0.22,1,0.36,1) both; }
-        .js-sigil { animation: js-sigil-pulse 3s ease-in-out infinite; }
+        .js-mark  { animation: js-mark-pulse 3s ease-in-out infinite; }
       `}</style>
       <div
         className="js-root fixed inset-0 flex flex-col items-center justify-center px-6"
         style={{ background: 'var(--th-bg)', fontFamily: "'DM Sans',system-ui,sans-serif" }}
       >
-        <div className="js-sigil" style={{ marginBottom: 24 }}>
-          <AbyssSignil size={36} />
+        <div className="js-mark" style={{ marginBottom: 20 }}>
+          <Room13Mark size={44} opacity={1} />
         </div>
         <span style={{
           fontFamily:    "'Geist Mono', ui-monospace, monospace",
-          fontSize:      '0.75rem', fontWeight: 500, letterSpacing: '0.22em',
-          color:         'var(--th-text-4)', textTransform: 'lowercase', marginBottom: 20,
+          fontSize:      '0.72rem', fontWeight: 500, letterSpacing: '0.22em',
+          color:         'var(--th-text-4)', textTransform: 'lowercase', marginBottom: 6,
         }}>
-          abyssprotocol
+          room 13
+        </span>
+        <span style={{
+          fontFamily:    "'Geist Mono', ui-monospace, monospace",
+          fontSize:      '0.52rem', fontWeight: 400, letterSpacing: '0.14em',
+          color:         'var(--th-text-4)', textTransform: 'lowercase', marginBottom: 24,
+          opacity: 0.6,
+        }}>
+          by abyss protocol
         </span>
         <h1 style={{
           fontFamily:   "'Cormorant Garamond',serif",
@@ -400,7 +415,7 @@ function JoinScreen({ onJoin, loading }: { onJoin: (name: string) => void; loadi
               fontFamily: "'DM Sans',system-ui,sans-serif", transition: 'all 0.2s ease',
             }}
           >
-            {loading ? 'Entering the abyss...' : 'Join game'}
+            {loading ? 'Entering room 13...' : 'Join game'}
           </button>
         </div>
         <BrandWatermark />
@@ -429,29 +444,28 @@ function WaitingScreen({ shareUrl }: { shareUrl: string }) {
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=DM+Sans:wght@300;400;500&display=swap');
         @keyframes ws-pulse  { 0%,100%{opacity:0.35} 50%{opacity:1} }
         @keyframes ws-in     { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes ws-sigil-pulse { 0%,100%{opacity:0.55} 50%{opacity:0.9} }
+        @keyframes ws-mark-pulse { 0%,100%{opacity:0.55} 50%{opacity:0.9} }
         .ws-root  { animation: ws-in 0.4s ease both; }
         .ws-dot   { animation: ws-pulse 1.4s ease-in-out infinite; }
         .ws-dot:nth-child(2) { animation-delay:0.2s }
         .ws-dot:nth-child(3) { animation-delay:0.4s }
-        .ws-sigil { animation: ws-sigil-pulse 3s ease-in-out infinite; }
+        .ws-mark  { animation: ws-mark-pulse 3s ease-in-out infinite; }
       `}</style>
       <div
         className="ws-root fixed inset-0 flex flex-col items-center justify-center px-6"
         style={{ background: 'var(--th-bg)', fontFamily: "'DM Sans',system-ui,sans-serif" }}
       >
-        <div className="ws-sigil" style={{ marginBottom: 20 }}>
-          <AbyssSignil size={32} />
+        <div className="ws-mark" style={{ marginBottom: 16 }}>
+          <Room13Mark size={36} opacity={1} />
         </div>
         <span style={{
           fontFamily:    "'Geist Mono', ui-monospace, monospace",
           fontSize:      '0.70rem', fontWeight: 500, letterSpacing: '0.22em',
           color:         'var(--th-text-4)', textTransform: 'lowercase', marginBottom: 28,
         }}>
-          abyssprotocol
+          room 13
         </span>
 
-        {/* Waiting dots */}
         <div className="flex gap-2 mb-8">
           {[0, 1, 2].map(i => (
             <div key={i} className="ws-dot" style={{
@@ -474,7 +488,6 @@ function WaitingScreen({ shareUrl }: { shareUrl: string }) {
           Share the link below.<br />The game starts once they join.
         </p>
 
-        {/* Share URL pill */}
         <button
           onClick={copy}
           style={{
@@ -663,7 +676,6 @@ export default function RoomPage() {
 
   const { sendEvent, status } = useRoomChannel({ roomId, onEvent: handleEvent, enabled: !!room })
 
-  // Initial room load
   useEffect(() => {
     if (!roomId) return
     async function load() {
@@ -714,7 +726,6 @@ export default function RoomPage() {
     void load()
   }, [roomId])
 
-  // Join
   async function handleJoin(name: string) {
     setJoinLoading(true)
     const res = await fetch('/api/join', {
@@ -734,7 +745,6 @@ export default function RoomPage() {
     await sendEvent({ type: 'PLAYER_JOINED', player: 2, name })
   }
 
-  // Draw
   async function handleDraw() {
     if (!mySlot || drawLoading) return
     setDrawLoading(true)
@@ -760,7 +770,6 @@ export default function RoomPage() {
     await sendEvent({ type: 'TURN_ADVANCED', nextTurn })
   }
 
-  // Open card from grid
   function handleOpenCard(card: DrawnCard) {
     setMessages([])
     setActivePick({
@@ -771,13 +780,11 @@ export default function RoomPage() {
     void loadMessagesForCard(card.questionIndex)
   }
 
-  // Typing broadcast
   async function handleTyping() {
     if (!mySlot || !activePick) return
     await sendEvent({ type: 'TYPING', questionIndex: activePick.questionIndex, player: mySlot })
   }
 
-  // Propose
   async function handlePropose(text: string, tier: QuestionTier) {
     if (!mySlot) return
     setProposeLoading(true)
@@ -792,7 +799,6 @@ export default function RoomPage() {
     await sendEvent({ type: 'QUESTION_PROPOSED', proposedBy: mySlot, text, tier })
   }
 
-  // Consent
   async function handleConsent(accepted: boolean) {
     if (!mySlot) return
     setConsentLoading(true)
@@ -812,7 +818,6 @@ export default function RoomPage() {
     }
   }
 
-  // Send message
   async function handleSendMessage(content: string) {
     if (!mySlot || !activePick) return
     const r = roomRef.current
@@ -844,7 +849,6 @@ export default function RoomPage() {
     })
   }
 
-  // Derived
   const isMyTurn   = mySlot !== null && currentTurn === mySlot
   const canPropose = !pendingProposal
   const shareUrl   = typeof window !== 'undefined' ? window.location.href : ''
@@ -852,7 +856,6 @@ export default function RoomPage() {
   const p2Name     = room?.player2_name ?? 'Player 2'
   const myName     = mySlot === 1 ? p1Name : p2Name
 
-  // Early screens
   if (!room) {
     return (
       <div style={{
@@ -861,7 +864,6 @@ export default function RoomPage() {
         alignItems:     'center', justifyContent: 'center',
         fontFamily:     "'DM Sans',system-ui,sans-serif", gap: 20,
       }}>
-        {/* Loading spinner — uses theme border tokens */}
         <div style={{
           width: 28, height: 28, borderRadius: '50%',
           border:      '2px solid var(--th-border-2)',
@@ -877,7 +879,6 @@ export default function RoomPage() {
   if (needsJoin)                          return <JoinScreen onJoin={handleJoin} loading={joinLoading} />
   if (!hasBothPlayers && mySlot === 1)    return <WaitingScreen shareUrl={shareUrl} />
 
-  // Full game view
   return (
     <>
       <style>{`
@@ -982,14 +983,12 @@ export default function RoomPage() {
           </div>
         </div>
 
-        {/* Turn banner */}
         <TurnBanner
           currentTurn={currentTurn} mySlot={mySlot ?? 1}
           player1Name={p1Name} player2Name={p2Name}
           channelStatus={status}
         />
 
-        {/* Consent banner */}
         {pendingProposal && pendingProposal.proposedBy !== mySlot && (
           <ConsentBanner
             proposal={pendingProposal}
@@ -999,7 +998,6 @@ export default function RoomPage() {
           />
         )}
 
-        {/* Pending proposal notice */}
         {pendingProposal && pendingProposal.proposedBy === mySlot && (
           <div style={{
             margin:     '12px 16px 0', padding: '10px 16px', borderRadius: 12,
@@ -1024,7 +1022,6 @@ export default function RoomPage() {
         </div>
       </main>
 
-      {/* Fixed draw button */}
       <DrawButton
         isMyTurn={isMyTurn && hasBothPlayers}
         isLoading={drawLoading}
@@ -1033,7 +1030,6 @@ export default function RoomPage() {
         onPropose={() => setProposeOpen(true)}
       />
 
-      {/* Pick modal */}
       {activePick && (
         <PickModal
           questionText={activePick.questionText}
@@ -1060,7 +1056,6 @@ export default function RoomPage() {
         />
       )}
 
-      {/* Propose modal */}
       {proposeOpen && (
         <ProposeModal
           onSubmit={handlePropose}
@@ -1069,7 +1064,6 @@ export default function RoomPage() {
         />
       )}
 
-      {/* Toast */}
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
     </>
   )
