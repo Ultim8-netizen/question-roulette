@@ -1,189 +1,142 @@
+// app/how-to-play/page.tsx
 'use client'
 
 import { useState } from 'react'
 import Link from 'next/link'
 
 // ---------------------------------------------------------------------------
-// Types
+// Exportable overlay — used by homepage for first-visit onboarding.
+// When `onClose` is provided the component renders as a full-screen overlay
+// with a dismiss button. When rendered as a standalone page (direct route),
+// onClose is undefined and a back-link is shown instead.
 // ---------------------------------------------------------------------------
+
+export type HowToPlayOverlayProps = {
+  onClose?: () => void
+}
 
 type Tab = 'steps' | 'tiers' | 'faq'
 
 // ---------------------------------------------------------------------------
-// Brand sigil
+// Sigil
 // ---------------------------------------------------------------------------
 
 function AbyssSignil({ size = 10, opacity = 1 }: { size?: number; opacity?: number }) {
   return (
     <svg
-      width={size}
-      height={size}
-      viewBox="0 0 32 32"
-      fill="none"
-      aria-hidden="true"
+      width={size} height={size} viewBox="0 0 32 32"
+      fill="none" aria-hidden="true"
       style={{ opacity, flexShrink: 0 }}
     >
-      <circle cx="16" cy="16" r="9" stroke="#c8d0de" strokeWidth="1.4" strokeDasharray="22 6" strokeDashoffset="3" />
-      <line x1="16" y1="4" x2="16" y2="28" stroke="#c8d0de" strokeWidth="1.6" strokeLinecap="round" />
-      <circle cx="16" cy="16" r="2" fill="#c8d0de" />
+      <circle cx="16" cy="16" r="9" stroke="var(--th-brand)" strokeWidth="1.4"
+        strokeDasharray="22 6" strokeDashoffset="3" />
+      <line x1="16" y1="4" x2="16" y2="28" stroke="var(--th-brand)"
+        strokeWidth="1.6" strokeLinecap="round" />
+      <circle cx="16" cy="16" r="2" fill="var(--th-brand)" />
     </svg>
   )
 }
 
 // ---------------------------------------------------------------------------
-// Step — numbered guide entry
+// Step
 // ---------------------------------------------------------------------------
 
-type StepProps = {
+function Step({
+  number, title, body, hint, flow, active,
+}: {
   number: number
   title: string
   body: React.ReactNode
-  accent?: string
   hint?: React.ReactNode
   flow?: string[]
   active?: boolean
-}
-
-function Step({ number, title, body, accent = '#c8d0de', hint, flow, active }: StepProps) {
+}) {
   return (
-    <>
-      <style>{`
-        @keyframes step-in {
-          from { opacity: 0; transform: translateX(-8px); }
-          to   { opacity: 1; transform: translateX(0); }
-        }
-        .step-root { animation: step-in 0.35s cubic-bezier(0.22,1,0.36,1) both; }
-      `}</style>
-      <div
-        className="step-root"
-        style={{
-          display: 'flex',
-          gap: 18,
-          paddingBottom: 32,
-          position: 'relative',
-        }}
-      >
-        {/* Connector line */}
-        <div style={{
-          position: 'absolute',
-          left: 15,
-          top: 32,
-          bottom: 0,
-          width: 1,
-          background: 'linear-gradient(to bottom, rgba(255,255,255,0.06) 0%, transparent 100%)',
-        }} />
+    <div style={{ display: 'flex', gap: 16, paddingBottom: 28, position: 'relative' }}>
+      {/* Connector line */}
+      <div style={{
+        position: 'absolute', left: 13, top: 30, bottom: 0, width: 1,
+        background: 'linear-gradient(to bottom, var(--th-border-2) 0%, transparent 100%)',
+      }} />
 
-        {/* Number badge */}
-        <div style={{
-          width: 30,
-          height: 30,
-          borderRadius: '50%',
-          flexShrink: 0,
-          border: active
-            ? `1.5px solid ${accent}55`
-            : '1px solid rgba(255,255,255,0.08)',
-          background: active
-            ? `${accent}12`
-            : 'linear-gradient(135deg, #0d0f18, #090a12)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: active ? accent : '#2a3244',
-          fontSize: '0.68rem',
-          fontWeight: 700,
-          fontFamily: "'Geist Mono', ui-monospace, monospace",
-          letterSpacing: '0.04em',
-          zIndex: 1,
-        }}>
-          {number}
-        </div>
-
-        {/* Content */}
-        <div style={{ flex: 1, paddingTop: 4 }}>
-          <h3 style={{
-            fontFamily: "'Cormorant Garamond', Georgia, serif",
-            color: '#c8d0de',
-            fontSize: '1.05rem',
-            fontWeight: 600,
-            lineHeight: 1.3,
-            marginBottom: 8,
-          }}>
-            {title}
-          </h3>
-          <div style={{
-            fontFamily: "'DM Sans', system-ui, sans-serif",
-            color: '#64748b',
-            fontSize: '0.82rem',
-            lineHeight: 1.7,
-          }}>
-            {body}
-          </div>
-
-          {/* Flow diagram */}
-          {flow && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              marginTop: 14,
-              flexWrap: 'wrap',
-            }}>
-              {flow.map((step, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{
-                    fontFamily: "'DM Sans', system-ui, sans-serif",
-                    fontSize: '0.68rem',
-                    fontWeight: 500,
-                    color: '#475569',
-                    background: '#0d0f18',
-                    border: '1px solid rgba(255,255,255,0.07)',
-                    borderRadius: 8,
-                    padding: '4px 10px',
-                    letterSpacing: '0.02em',
-                  }}>
-                    {step}
-                  </span>
-                  {i < flow.length - 1 && (
-                    <span style={{ color: '#1e2535', fontSize: '0.70rem' }}>→</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Hint box */}
-          {hint && (
-            <div style={{
-              marginTop: 12,
-              padding: '10px 14px',
-              background: '#06070d',
-              border: '1px solid rgba(255,255,255,0.05)',
-              borderRadius: 10,
-              display: 'flex',
-              gap: 8,
-            }}>
-              <div style={{
-                width: 5,
-                height: 5,
-                borderRadius: '50%',
-                background: accent,
-                boxShadow: `0 0 6px ${accent}`,
-                flexShrink: 0,
-                marginTop: 5,
-              }} />
-              <div style={{
-                fontFamily: "'DM Sans', system-ui, sans-serif",
-                color: '#334155',
-                fontSize: '0.75rem',
-                lineHeight: 1.6,
-              }}>
-                {hint}
-              </div>
-            </div>
-          )}
-        </div>
+      {/* Number badge */}
+      <div style={{
+        width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+        border: active ? '1.5px solid var(--th-border-2)' : '1px solid var(--th-border)',
+        background: active ? 'var(--th-surface-2)' : 'var(--th-surface)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color: active ? 'var(--th-text-1)' : 'var(--th-text-3)',
+        fontSize: '0.66rem', fontWeight: 700,
+        fontFamily: 'var(--font-brand-mono)',
+        letterSpacing: '0.04em', zIndex: 1,
+        transition: 'all 0.2s ease',
+      }}>
+        {number}
       </div>
-    </>
+
+      {/* Content */}
+      <div style={{ flex: 1, paddingTop: 3 }}>
+        <h3 style={{
+          fontFamily: 'var(--font-brand-serif)',
+          color: 'var(--th-text-1)',
+          fontSize: '1.05rem', fontWeight: 600,
+          lineHeight: 1.3, marginBottom: 6,
+        }}>
+          {title}
+        </h3>
+        <div style={{
+          fontFamily: 'var(--font-brand-sans)',
+          color: 'var(--th-text-3)',
+          fontSize: '0.82rem', lineHeight: 1.75,
+        }}>
+          {body}
+        </div>
+
+        {flow && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 12, flexWrap: 'wrap' }}>
+            {flow.map((s, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{
+                  fontFamily: 'var(--font-brand-sans)',
+                  fontSize: '0.66rem', fontWeight: 500,
+                  color: 'var(--th-text-3)',
+                  background: 'var(--th-surface)',
+                  border: '1px solid var(--th-border)',
+                  borderRadius: 8, padding: '3px 9px',
+                }}>
+                  {s}
+                </span>
+                {i < flow.length - 1 && (
+                  <span style={{ color: 'var(--th-text-4)', fontSize: '0.65rem' }}>→</span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {hint && (
+          <div style={{
+            marginTop: 10, padding: '10px 13px',
+            background: 'var(--th-surface)',
+            border: '1px solid var(--th-border)',
+            borderRadius: 10, display: 'flex', gap: 8,
+          }}>
+            <div style={{
+              width: 4, height: 4, borderRadius: '50%',
+              background: 'var(--th-text-3)',
+              flexShrink: 0, marginTop: 6,
+            }} />
+            <div style={{
+              fontFamily: 'var(--font-brand-sans)',
+              color: 'var(--th-text-3)',
+              fontSize: '0.74rem', lineHeight: 1.65,
+            }}>
+              {hint}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -191,89 +144,76 @@ function Step({ number, title, body, accent = '#c8d0de', hint, flow, active }: S
 // Tier card
 // ---------------------------------------------------------------------------
 
-type TierCardProps = {
+const TIER_COLORS: Record<string, string> = {
+  light:  'var(--tier-light)',
+  medium: 'var(--tier-medium)',
+  deep:   'var(--tier-deep)',
+  spicy:  'var(--tier-spicy)',
+}
+
+function TierCard({
+  name, colorKey, tagline, description, examples, symbol,
+}: {
   name: string
-  color: string
+  colorKey: string
   tagline: string
   description: string
   examples: string[]
   symbol: React.ReactNode
-}
-
-function TierCard({ name, color, tagline, description, examples, symbol }: TierCardProps) {
+}) {
+  const color = TIER_COLORS[colorKey]
   return (
     <div style={{
-      background: `linear-gradient(150deg, ${color}08 0%, transparent 60%)`,
-      border: `1px solid ${color}20`,
-      borderRadius: 18,
-      padding: '20px 18px 18px',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 12,
+      background: 'var(--th-surface)',
+      border: `1px solid var(--th-border)`,
+      borderRadius: 18, padding: '18px 16px 16px',
+      display: 'flex', flexDirection: 'column', gap: 10,
+      transition: 'border-color 0.2s ease',
     }}>
-      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{ opacity: 0.75 }}>{symbol}</div>
+        <div style={{ opacity: 0.80 }}>{symbol}</div>
         <div>
           <div style={{
-            fontFamily: "'DM Sans', system-ui, sans-serif",
-            color,
-            fontSize: '0.62rem',
-            fontWeight: 700,
-            letterSpacing: '0.16em',
-            textTransform: 'uppercase',
-            marginBottom: 1,
+            fontFamily: 'var(--font-brand-sans)',
+            color, fontSize: '0.60rem', fontWeight: 700,
+            letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 1,
           }}>
             {name}
           </div>
           <div style={{
-            fontFamily: "'Cormorant Garamond', Georgia, serif",
-            color: '#94a3b8',
-            fontSize: '0.88rem',
-            fontStyle: 'italic',
+            fontFamily: 'var(--font-brand-serif)',
+            color: 'var(--th-text-2)', fontSize: '0.86rem', fontStyle: 'italic',
           }}>
             {tagline}
           </div>
         </div>
       </div>
 
-      {/* Description */}
       <p style={{
-        fontFamily: "'DM Sans', system-ui, sans-serif",
-        color: '#475569',
-        fontSize: '0.78rem',
-        lineHeight: 1.65,
-        margin: 0,
+        fontFamily: 'var(--font-brand-sans)',
+        color: 'var(--th-text-3)', fontSize: '0.78rem',
+        lineHeight: 1.65, margin: 0,
       }}>
         {description}
       </p>
 
-      {/* Divider */}
-      <div style={{ height: 1, background: `${color}14` }} />
+      <div style={{ height: 1, background: 'var(--th-border)' }} />
 
-      {/* Examples */}
       <div>
         <div style={{
-          fontFamily: "'DM Sans', system-ui, sans-serif",
-          color: '#1e2535',
-          fontSize: '0.58rem',
-          fontWeight: 600,
-          letterSpacing: '0.14em',
-          textTransform: 'uppercase',
-          marginBottom: 8,
+          fontFamily: 'var(--font-brand-sans)',
+          color: 'var(--th-text-4)', fontSize: '0.56rem', fontWeight: 600,
+          letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 7,
         }}>
           Sample questions
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           {examples.map((ex, i) => (
             <div key={i} style={{
-              fontFamily: "'Cormorant Garamond', Georgia, serif",
-              color: '#334155',
-              fontSize: '0.82rem',
-              fontStyle: 'italic',
-              lineHeight: 1.5,
-              paddingLeft: 10,
-              borderLeft: `1.5px solid ${color}30`,
+              fontFamily: 'var(--font-brand-serif)',
+              color: 'var(--th-text-3)', fontSize: '0.82rem',
+              fontStyle: 'italic', lineHeight: 1.5,
+              paddingLeft: 10, borderLeft: `1.5px solid var(--th-border-2)`,
             }}>
               &ldquo;{ex}&rdquo;
             </div>
@@ -291,54 +231,38 @@ function TierCard({ name, color, tagline, description, examples, symbol }: TierC
 function FAQ({ q, a }: { q: string; a: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   return (
-    <div style={{
-      borderBottom: '1px solid rgba(255,255,255,0.05)',
-    }}>
+    <div style={{ borderBottom: '1px solid var(--th-border)' }}>
       <button
         onClick={() => setOpen(o => !o)}
         style={{
-          width: '100%',
-          background: 'none',
-          border: 'none',
-          padding: '16px 0',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 12,
-          cursor: 'pointer',
-          textAlign: 'left',
+          width: '100%', background: 'none', border: 'none',
+          padding: '15px 0', display: 'flex', alignItems: 'center',
+          justifyContent: 'space-between', gap: 12, cursor: 'pointer', textAlign: 'left',
         }}
       >
         <span style={{
-          fontFamily: "'DM Sans', system-ui, sans-serif",
-          color: open ? '#94a3b8' : '#64748b',
-          fontSize: '0.85rem',
-          fontWeight: 500,
-          lineHeight: 1.5,
+          fontFamily: 'var(--font-brand-sans)',
+          color: open ? 'var(--th-text-2)' : 'var(--th-text-3)',
+          fontSize: '0.83rem', fontWeight: 500, lineHeight: 1.5,
           transition: 'color 0.2s ease',
         }}>
           {q}
         </span>
         <span style={{
-          color: open ? '#4ade80' : '#334155',
-          fontSize: '1rem',
-          flexShrink: 0,
+          color: open ? 'var(--tier-light)' : 'var(--th-text-4)',
+          fontSize: '1rem', flexShrink: 0,
           transition: 'transform 0.2s ease, color 0.2s ease',
-          transform: open ? 'rotate(45deg)' : 'rotate(0deg)',
-          display: 'inline-block',
-          lineHeight: 1,
+          transform: open ? 'rotate(45deg)' : 'none',
+          display: 'inline-block', lineHeight: 1,
         }}>
           +
         </span>
       </button>
       {open && (
         <div style={{
-          fontFamily: "'DM Sans', system-ui, sans-serif",
-          color: '#475569',
-          fontSize: '0.80rem',
-          lineHeight: 1.7,
-          paddingBottom: 16,
-          paddingRight: 24,
+          fontFamily: 'var(--font-brand-sans)',
+          color: 'var(--th-text-3)', fontSize: '0.79rem',
+          lineHeight: 1.72, paddingBottom: 14, paddingRight: 20,
         }}>
           {a}
         </div>
@@ -348,16 +272,18 @@ function FAQ({ q, a }: { q: string; a: React.ReactNode }) {
 }
 
 // ---------------------------------------------------------------------------
-// Tier SVG symbols — small versions
+// Tier symbols
 // ---------------------------------------------------------------------------
 
 function LightSymbol() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
       {[0, 60, 120, 180, 240, 300].map(deg => (
-        <ellipse key={deg} cx="12" cy="12" rx="3.5" ry="8" fill="#4ade80" opacity="0.55" transform={`rotate(${deg} 12 12)`} />
+        <ellipse key={deg} cx="12" cy="12" rx="3.5" ry="8"
+          fill="var(--tier-light)" opacity="0.55"
+          transform={`rotate(${deg} 12 12)`} />
       ))}
-      <circle cx="12" cy="12" r="2" fill="#4ade80" opacity="0.95" />
+      <circle cx="12" cy="12" r="2" fill="var(--tier-light)" opacity="0.95" />
     </svg>
   )
 }
@@ -365,469 +291,426 @@ function MediumSymbol() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
       {[10, 7, 4].map((r, i) => (
-        <circle key={r} cx="12" cy="12" r={r} stroke="#60a5fa" strokeWidth="1" opacity={0.4 + i * 0.2} fill="none" />
+        <circle key={r} cx="12" cy="12" r={r} stroke="var(--tier-medium)"
+          strokeWidth="1" opacity={0.4 + i * 0.2} fill="none" />
       ))}
-      <circle cx="12" cy="12" r="1.5" fill="#60a5fa" opacity="0.95" />
+      <circle cx="12" cy="12" r="1.5" fill="var(--tier-medium)" opacity="0.95" />
     </svg>
   )
 }
 function DeepSymbol() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-      <path d="M12 3 L21 20 H3 Z" stroke="#f87171" strokeWidth="1.2" fill="#f87171" fillOpacity="0.18" strokeLinejoin="round" opacity="0.85" />
-      <path d="M12 8 L17 18 H7 Z" fill="#f87171" opacity="0.55" />
+      <path d="M12 3 L21 20 H3 Z" stroke="var(--tier-deep)" strokeWidth="1.2"
+        fill="var(--tier-deep)" fillOpacity="0.18" strokeLinejoin="round" opacity="0.85" />
+      <path d="M12 8 L17 18 H7 Z" fill="var(--tier-deep)" opacity="0.55" />
     </svg>
   )
 }
 function SpicySymbol() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-      <path d="M14 2 L5 13 H11 L10 22 L19 11 H13 Z" fill="#c084fc" opacity="0.80" strokeLinejoin="round" />
+      <path d="M14 2 L5 13 H11 L10 22 L19 11 H13 Z"
+        fill="var(--tier-spicy)" opacity="0.80" strokeLinejoin="round" />
     </svg>
   )
 }
 
 // ---------------------------------------------------------------------------
-// Main page
+// Main component — works as standalone page AND importable overlay
 // ---------------------------------------------------------------------------
 
-export default function HowToPlayPage() {
+export default function HowToPlayPage({ onClose }: HowToPlayOverlayProps) {
   const [tab, setTab] = useState<Tab>('steps')
 
   const TABS: { id: Tab; label: string }[] = [
-    { id: 'steps', label: 'Step by step' },
+    { id: 'steps', label: 'How it works' },
     { id: 'tiers', label: 'The four tiers' },
-    { id: 'faq',   label: 'Common questions' },
+    { id: 'faq',   label: 'Questions' },
   ]
+
+  const isOverlay = !!onClose
 
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=DM+Sans:wght@300;400;500&display=swap');
+        @keyframes htp-in {
+          from { opacity: 0; transform: translateY(16px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes htp-fade {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        @keyframes htp-sigil {
+          0%, 100% { opacity: 0.55; }
+          50%      { opacity: 0.9;  }
+        }
 
-        *, *::before, *::after { box-sizing: border-box; }
-        body { background: #020308; margin: 0; }
+        .htp-root  { animation: htp-in   0.48s cubic-bezier(0.22,1,0.36,1) both; }
+        .htp-fade  { animation: htp-fade 0.32s ease both; }
+        .htp-sigil { animation: htp-sigil 3.5s ease-in-out infinite; }
 
-        @keyframes page-in  { from { opacity:0; transform:translateY(12px) } to { opacity:1; transform:translateY(0) } }
-        @keyframes hdr-in   { from { opacity:0; transform:translateY(-8px) } to { opacity:1; transform:translateY(0) } }
-        @keyframes tab-in   { from { opacity:0; transform:translateY(6px)  } to { opacity:1; transform:translateY(0) } }
-        @keyframes content-in { from { opacity:0 } to { opacity:1 } }
-
-        .page-root  { animation: page-in   0.40s cubic-bezier(0.22,1,0.36,1) both; }
-        .hdr-root   { animation: hdr-in    0.35s cubic-bezier(0.22,1,0.36,1) both; }
-        .tab-row    { animation: tab-in    0.35s cubic-bezier(0.22,1,0.36,1) 0.08s both; }
-        .content    { animation: content-in 0.30s ease 0.12s both; }
-
-        .tab-btn {
+        .htp-tab {
           background: none;
-          border: 1px solid rgba(255,255,255,0.07);
+          border: 1px solid var(--th-border);
           border-radius: 10px;
-          padding: 8px 16px;
-          font-family: 'DM Sans', system-ui, sans-serif;
-          font-size: 0.78rem;
+          padding: 7px 14px;
+          font-family: var(--font-brand-sans);
+          font-size: 0.76rem;
           font-weight: 500;
           letter-spacing: 0.02em;
           cursor: pointer;
           transition: all 0.18s ease;
           white-space: nowrap;
+          color: var(--th-text-4);
         }
-        .tab-btn:hover {
-          border-color: rgba(255,255,255,0.13);
-          color: #94a3b8;
+        .htp-tab:hover {
+          border-color: var(--th-border-2);
+          color: var(--th-text-2);
         }
-        .tab-btn.active {
-          background: rgba(255,255,255,0.06);
-          border-color: rgba(255,255,255,0.14);
-          color: #c8d0de;
+        .htp-tab.active {
+          background: var(--th-surface-2);
+          border-color: var(--th-border-2);
+          color: var(--th-text-1);
         }
-        .tab-btn.inactive { color: #334155; }
+
+        .htp-cta {
+          width: 100%;
+          padding: 16px 0;
+          border-radius: 16px;
+          background: var(--th-surface);
+          border: 1px solid var(--th-border-2);
+          color: var(--th-text-1);
+          font-family: var(--font-brand-sans);
+          font-size: 0.88rem;
+          font-weight: 500;
+          letter-spacing: 0.04em;
+          cursor: pointer;
+          transition: background 0.2s ease, border-color 0.2s ease;
+        }
+        .htp-cta:hover {
+          background: var(--th-surface-2);
+        }
+
+        .htp-scroll::-webkit-scrollbar { width: 3px; }
+        .htp-scroll::-webkit-scrollbar-track { background: transparent; }
+        .htp-scroll::-webkit-scrollbar-thumb {
+          background: var(--th-border-2);
+          border-radius: 99px;
+        }
       `}</style>
 
-      <main
-        className="page-root"
-        style={{
-          minHeight: '100dvh',
-          background: '#020308',
-          color: '#ededed',
-          maxWidth: 480,
-          margin: '0 auto',
-          padding: '0 0 80px',
-        }}
+      {/* Overlay wrapper — only added when used as onboarding modal */}
+      <div
+        className={isOverlay ? 'htp-fade' : ''}
+        style={isOverlay ? {
+          position: 'fixed', inset: 0, zIndex: 200,
+          background: 'var(--th-overlay)',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+          display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+          padding: '0 0 0 0',
+          overflowY: 'auto',
+        } : {}}
       >
-        {/* ── Header ── */}
-        <div
-          className="hdr-root"
+        <main
+          className="htp-root"
           style={{
-            padding: '24px 20px 0',
-            marginBottom: 28,
+            width: '100%',
+            maxWidth: 480,
+            minHeight: isOverlay ? undefined : '100dvh',
+            maxHeight: isOverlay ? '96dvh' : undefined,
+            background: 'var(--th-bg)',
+            color: 'var(--th-fg)',
+            display: 'flex',
+            flexDirection: 'column',
+            borderRadius: isOverlay ? '24px 24px 0 0' : 0,
+            border: isOverlay ? '1px solid var(--th-border-2)' : 'none',
+            borderBottom: 'none',
+            overflow: 'hidden',
           }}
         >
-          {/* Back + wordmark row */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: 22,
-          }}>
-            <Link
-              href="/"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                textDecoration: 'none',
-                color: '#2a3244',
-                fontSize: '0.72rem',
-                fontFamily: "'DM Sans', system-ui, sans-serif",
-                fontWeight: 400,
-                transition: 'color 0.2s ease',
-              }}
-              onMouseEnter={e => ((e.currentTarget as HTMLAnchorElement).style.color = '#475569')}
-              onMouseLeave={e => ((e.currentTarget as HTMLAnchorElement).style.color = '#2a3244')}
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M9 2L4 7l5 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              back
-            </Link>
+          {/* Drag handle — overlay only */}
+          {isOverlay && (
+            <div style={{
+              display: 'flex', justifyContent: 'center',
+              paddingTop: 14, paddingBottom: 4, flexShrink: 0,
+            }}>
+              <div style={{
+                width: 36, height: 4, borderRadius: 2,
+                background: 'var(--th-border-2)',
+              }} />
+            </div>
+          )}
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <AbyssSignil size={14} opacity={0.55} />
+          {/* Scrollable content */}
+          <div
+            className="htp-scroll"
+            style={{
+              flex: 1,
+              overflowY: 'auto',
+              padding: isOverlay ? '8px 0 0' : '0',
+            }}
+          >
+            {/* ── Header ── */}
+            <div style={{ padding: '20px 20px 0' }}>
+
+              {/* Nav row */}
+              <div style={{
+                display: 'flex', alignItems: 'center',
+                justifyContent: 'space-between', marginBottom: 24,
+              }}>
+                {isOverlay ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div className="htp-sigil">
+                      <AbyssSignil size={14} opacity={1} />
+                    </div>
+                    <span style={{
+                      fontFamily: 'var(--font-brand-mono)',
+                      fontSize: '0.58rem', color: 'var(--th-text-4)',
+                      letterSpacing: '0.18em', textTransform: 'lowercase',
+                    }}>
+                      abyssprotocol
+                    </span>
+                  </div>
+                ) : (
+                  <Link
+                    href="/"
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 5,
+                      textDecoration: 'none', color: 'var(--th-text-4)',
+                      fontSize: '0.70rem',
+                      fontFamily: 'var(--font-brand-sans)',
+                      transition: 'color 0.2s ease',
+                    }}
+                    onMouseEnter={e => ((e.currentTarget as HTMLAnchorElement).style.color = 'var(--th-text-3)')}
+                    onMouseLeave={e => ((e.currentTarget as HTMLAnchorElement).style.color = 'var(--th-text-4)')}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                      <path d="M9 2L4 7l5 5" stroke="currentColor"
+                        strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    back
+                  </Link>
+                )}
+
+                {!isOverlay && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <AbyssSignil size={13} opacity={0.5} />
+                    <span style={{
+                      fontFamily: 'var(--font-brand-mono)',
+                      fontSize: '0.58rem', color: 'var(--th-text-4)',
+                      letterSpacing: '0.18em', textTransform: 'lowercase',
+                    }}>
+                      abyssprotocol
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Title block */}
+              <div style={{ marginBottom: 6 }}>
+                <div style={{
+                  fontFamily: 'var(--font-brand-sans)',
+                  fontSize: '0.60rem', fontWeight: 700,
+                  letterSpacing: '0.18em', textTransform: 'uppercase',
+                  color: 'var(--th-text-4)', marginBottom: 8,
+                }}>
+                  Before you begin
+                </div>
+                <h1 style={{
+                  fontFamily: 'var(--font-brand-serif)',
+                  color: 'var(--th-text-1)',
+                  fontSize: '2rem', fontWeight: 500, lineHeight: 1.15,
+                  marginBottom: 8,
+                }}>
+                  A game of honest draws
+                </h1>
+                <p style={{
+                  fontFamily: 'var(--font-brand-sans)',
+                  color: 'var(--th-text-3)',
+                  fontSize: '0.82rem', fontWeight: 300, lineHeight: 1.7,
+                }}>
+                  Two players. Alternating draws. Every card is a question —
+                  some light, some not. The only rule is honesty.
+                </p>
+              </div>
+
+              {/* Tier dot row */}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                marginTop: 16, marginBottom: 24,
+              }}>
+                <div style={{ flex: 1, height: 1, background: 'linear-gradient(to right, transparent, var(--th-border-2))' }} />
+                {(['light', 'medium', 'deep', 'spicy'] as const).map((t, i) => (
+                  <div key={t} style={{
+                    width: 5, height: 5, borderRadius: '50%',
+                    background: TIER_COLORS[t],
+                    boxShadow: `0 0 6px ${TIER_COLORS[t]}`,
+                    animation: `htp-sigil ${2.8 + i * 0.3}s ease-in-out ${i * 0.2}s infinite`,
+                  }} />
+                ))}
+                <div style={{ flex: 1, height: 1, background: 'linear-gradient(to left, transparent, var(--th-border-2))' }} />
+              </div>
+            </div>
+
+            {/* ── Tab bar ── */}
+            <div style={{
+              padding: '0 20px', marginBottom: 24,
+              display: 'flex', gap: 7,
+              overflowX: 'auto', scrollbarWidth: 'none',
+            }}>
+              {TABS.map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => setTab(t.id)}
+                  className={`htp-tab ${tab === t.id ? 'active' : ''}`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {/* ── Tab content ── */}
+            <div style={{ padding: '0 20px', paddingBottom: isOverlay ? 0 : 40 }}>
+
+              {/* STEPS */}
+              {tab === 'steps' && (
+                <div>
+                  <Step number={1} title="You enter your name" active
+                    body={<>On the home screen, type your name and tap <strong style={{ color: 'var(--th-text-2)', fontWeight: 600 }}>begin</strong>. A private room is created — no account, no sign-up.</>}
+                  />
+                  <Step number={2} title="Share the link"
+                    body={<>You land on a waiting screen with a unique link. Copy it and send it to the other person. Nothing starts until they arrive.</>}
+                    hint={<>The link is single-use and expires after 24 hours.</>}
+                  />
+                  <Step number={3} title="They join, the game begins"
+                    body={<>They enter their name and tap <strong style={{ color: 'var(--th-text-2)', fontWeight: 600 }}>Join game</strong>. Your waiting screen disappears — both screens come alive at the same moment.</>}
+                  />
+                  <Step number={4} title="You draw first, then take turns"
+                    body={<>The banner at the top shows whose move it is. When it glows, it&apos;s yours. Tap <strong style={{ color: 'var(--th-text-2)', fontWeight: 600 }}>Draw</strong> to pull a random card from the deck.</>}
+                    hint={<>Early draws are lighter in tone. As the game develops, the questions go deeper.</>}
+                  />
+                  <Step number={5} title="Tap the card to reveal it"
+                    body={<>The card lands face-down — you see the tier but not the question. Tap it to flip and read. The other player sees it appear in the grid and can open it too.</>}
+                  />
+                  <Step number={6} title="Both players can respond"
+                    body={<>A message thread opens beneath the question. Either player can write. No limit. You can see when the other person is typing.</>}
+                  />
+                  <Step number={7} title="Done closes the card for both of you"
+                    body={<>When you&apos;re ready to move on, tap <strong style={{ color: 'var(--th-text-2)', fontWeight: 600 }}>Done</strong>. This closes the card on both screens simultaneously. The thread is still there — tap the card again from the grid to re-read it.</>}
+                  />
+                  <Step number={8} title="You can add your own question"
+                    body={<>On your turn, an <strong style={{ color: 'var(--th-text-2)', fontWeight: 600 }}>Add a question</strong> link appears above the Draw button. Write it, choose a tier, send it. The other player accepts or declines. If accepted, it enters the live pool.</>}
+                    flow={['Your turn', 'Add question', 'They accept', 'Enters pool']}
+                  />
+                </div>
+              )}
+
+              {/* TIERS */}
+              {tab === 'tiers' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <p style={{
+                    fontFamily: 'var(--font-brand-sans)',
+                    color: 'var(--th-text-3)', fontSize: '0.80rem',
+                    lineHeight: 1.7, marginBottom: 4,
+                  }}>
+                    Each card belongs to one of four tiers. You see the tier before you flip — the question itself is always a surprise.
+                  </p>
+                  <TierCard name="Light" colorKey="light" tagline="Easy terrain"
+                    description="Surface questions. Playful, casual, lightly revealing. Good for getting comfortable before the depth arrives."
+                    examples={[
+                      "What's the worst advice you've ever followed?",
+                      "A habit of yours would confuse a stranger instantly — what is it?",
+                    ]}
+                    symbol={<LightSymbol />}
+                  />
+                  <TierCard name="Medium" colorKey="medium" tagline="Going deeper"
+                    description="Questions about patterns, preferences, and how you move through relationships. You start to see each other more clearly here."
+                    examples={[
+                      "What do people almost always misread about you?",
+                      "You trust people — but only to a point. Where is that line?",
+                    ]}
+                    symbol={<MediumSymbol />}
+                  />
+                  <TierCard name="Deep" colorKey="deep" tagline="Raw territory"
+                    description="Honest questions about fear, unresolved things, and what you want but won't always say."
+                    examples={[
+                      "Is there a version of your life that almost happened that you still think about?",
+                      "A fear that quietly shapes your decisions more than it should?",
+                    ]}
+                    symbol={<DeepSymbol />}
+                  />
+                  <TierCard name="Spicy" colorKey="spicy" tagline="No going back"
+                    description="Attraction, tension, and charged territory. These questions go where most conversations don't."
+                    examples={[
+                      "The line between curiosity and action — where do you usually stop?",
+                      "You've held eye contact a second too long — what was behind it?",
+                    ]}
+                    symbol={<SpicySymbol />}
+                  />
+                </div>
+              )}
+
+              {/* FAQ */}
+              {tab === 'faq' && (
+                <div>
+                  <FAQ q="Do we need accounts to play?"
+                    a="No. Enter a name, share a link, and the game starts. Nothing is stored beyond the session." />
+                  <FAQ q="What if I close the tab mid-game?"
+                    a="The game is still there. Reopen the same URL and your cards and responses are exactly where you left them. The room stays active for 24 hours." />
+                  <FAQ q="Can both players close a card?"
+                    a="Yes — tapping Done closes it for both of you at once. Either player can trigger it." />
+                  <FAQ q="What happens when we run out of questions?"
+                    a="The pool resets quietly and starts again. You'll never be stuck with nothing to draw." />
+                  <FAQ q="Can we skip a question?"
+                    a="There's no skip button. Part of the game is not knowing what you'll get. You can always close the card and talk about something else if it feels like too much." />
+                  <FAQ q="Are our responses saved?"
+                    a="Yes. Messages are stored and tied to each card. Tap any card in the grid to re-open the thread." />
+                  <FAQ q="Can we add our own questions?"
+                    a={<>On your turn, tap <strong style={{ color: 'var(--th-text-2)' }}>Add a question</strong> above the Draw button. Write it, choose a tier, and send it to the other player.</>} />
+                  <FAQ q="What does the connection indicator mean?"
+                    a={<>The dot in the top corner shows your live status. <strong style={{ color: 'var(--tier-light)' }}>Green</strong> means connected. <strong style={{ color: '#fbbf24' }}>Yellow</strong> means reconnecting. <strong style={{ color: 'var(--tier-deep)' }}>Red</strong> means offline — refresh to restore.</>} />
+                </div>
+              )}
+
+              <div style={{ height: 16 }} />
+            </div>
+          </div>
+
+          {/* ── Fixed bottom CTA ── */}
+          {isOverlay && (
+            <div style={{
+              padding: '12px 20px max(20px, env(safe-area-inset-bottom)) 20px',
+              background: 'linear-gradient(to top, var(--th-bg) 70%, transparent)',
+              flexShrink: 0,
+            }}>
+              <button className="htp-cta" onClick={onClose}>
+                I&apos;m ready — let&apos;s begin
+              </button>
+            </div>
+          )}
+
+          {/* Standalone footer watermark */}
+          {!isOverlay && (
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              gap: 5, opacity: 0.12, userSelect: 'none', pointerEvents: 'none',
+              padding: '24px 0 32px',
+            }}>
+              <AbyssSignil size={9} opacity={1} />
               <span style={{
-                fontFamily: "'Geist Mono', ui-monospace, monospace",
-                fontSize: '0.60rem',
-                color: '#1e2535',
-                letterSpacing: '0.18em',
-                textTransform: 'lowercase',
+                fontFamily: 'var(--font-brand-mono)',
+                fontSize: '0.55rem', color: 'var(--th-brand)',
+                letterSpacing: '0.18em', textTransform: 'lowercase',
               }}>
                 abyssprotocol
               </span>
             </div>
-          </div>
-
-          {/* Title block */}
-          <h1 style={{
-            fontFamily: "'Cormorant Garamond', Georgia, serif",
-            color: '#c8d0de',
-            fontSize: '2rem',
-            fontWeight: 500,
-            lineHeight: 1.15,
-            marginBottom: 6,
-          }}>
-            How to play
-          </h1>
-          <p style={{
-            fontFamily: "'DM Sans', system-ui, sans-serif",
-            color: '#2a3244',
-            fontSize: '0.78rem',
-            fontWeight: 300,
-            lineHeight: 1.6,
-            marginBottom: 0,
-          }}>
-            Two players. Alternating draws. Every card is a question — some light, some not.
-          </p>
-        </div>
-
-        {/* ── Tab bar ── */}
-        <div
-          className="tab-row"
-          style={{
-            padding: '0 20px',
-            marginBottom: 28,
-            display: 'flex',
-            gap: 8,
-            overflowX: 'auto',
-            scrollbarWidth: 'none',
-          }}
-        >
-          {TABS.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`tab-btn ${tab === t.id ? 'active' : 'inactive'}`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-
-        {/* ── Content ── */}
-        <div className="content" style={{ padding: '0 20px' }}>
-
-          {/* ── STEP BY STEP ── */}
-          {tab === 'steps' && (
-            <div>
-              <div style={{
-                fontFamily: "'DM Sans', system-ui, sans-serif",
-                color: '#1e2535',
-                fontSize: '0.58rem',
-                fontWeight: 700,
-                letterSpacing: '0.18em',
-                textTransform: 'uppercase',
-                marginBottom: 22,
-              }}>
-                Setting up
-              </div>
-
-              <Step
-                number={1}
-                title="The host enters their name"
-                active
-                body={
-                  <>On the homepage, type your name and click <strong style={{ color: '#94a3b8', fontWeight: 600 }}>begin</strong>. A private game room is created just for you two — no account needed.</>
-                }
-              />
-
-              <Step
-                number={2}
-                title="Share the link"
-                body={
-                  <>You land on a waiting screen. A unique link is shown — copy it and send it to the other person. <strong style={{ color: '#c8d0de', fontWeight: 600 }}>Nothing happens until they join.</strong></>
-                }
-                hint={
-                  <>The link only works once and expires after 24 hours. Each game gets its own fresh link.</>
-                }
-              />
-
-              <Step
-                number={3}
-                title="The other person opens the link"
-                body={
-                  <>They see a join screen, enter their name, and tap <strong style={{ color: '#94a3b8', fontWeight: 600 }}>Join game</strong>. The host&apos;s waiting screen disappears — the game begins automatically for both of you at the same time.</>
-                }
-              />
-
-              <div style={{
-                fontFamily: "'DM Sans', system-ui, sans-serif",
-                color: '#1e2535',
-                fontSize: '0.58rem',
-                fontWeight: 700,
-                letterSpacing: '0.18em',
-                textTransform: 'uppercase',
-                marginBottom: 22,
-                marginTop: 4,
-              }}>
-                Playing
-              </div>
-
-              <Step
-                number={4}
-                title="The host always goes first"
-                body={
-                  <>A banner at the top tells you whose turn it is. If it&apos;s your turn, the banner glows green and says <strong style={{ color: '#4ade80', fontWeight: 600 }}>Your draw</strong>. If it&apos;s theirs, it says who is deciding. The draw button at the bottom is only active on your turn.</>
-                }
-                hint={
-                  <>A small <strong style={{ color: '#4ade80' }}>Live</strong> indicator shows your connection status. If it turns red, refresh the page.</>
-                }
-              />
-
-              <Step
-                number={5}
-                title="Tap Draw to pull a card"
-                body={
-                  <>When it&apos;s your turn, the <strong style={{ color: '#c8d0de', fontWeight: 600 }}>Draw</strong> button at the bottom activates. Tap it — a random card is pulled from the pool. The card belongs to you this round.</>
-                }
-                flow={['Your turn', 'Tap Draw', 'Card appears', 'Their turn']}
-              />
-
-              <Step
-                number={6}
-                title="The card opens — but it's face-down first"
-                body={
-                  <>A card appears on your screen automatically. It shows the tier (light, medium, deep, or spicy) but hides the question. <strong style={{ color: '#c8d0de', fontWeight: 600 }}>Tap the card</strong> to flip it and reveal the question.</>
-                }
-                hint={
-                  <><strong style={{ color: '#f59e0b' }}>Other player:</strong> you also see the card appear in the grid at the bottom. Tap it to open it and read the question — it won&apos;t open on your screen automatically.</>
-                }
-              />
-
-              <Step
-                number={7}
-                title="Both players can respond"
-                body={
-                  <>Once the card is flipped, a text thread appears below the question. <strong style={{ color: '#c8d0de', fontWeight: 600 }}>Either player</strong> can type a response. You can go back and forth — there&apos;s no limit. You can see a typing indicator when the other person is composing.</>
-                }
-                hint={
-                  <>Responses are saved. You can close a card and re-open it later from the card grid to continue the conversation.</>
-                }
-              />
-
-              <Step
-                number={8}
-                title="Tap Done to close the card"
-                body={
-                  <>When you&apos;re both ready to move on, either player can tap the <strong style={{ color: '#c8d0de', fontWeight: 600 }}>Done</strong> button at the bottom of the card. <strong style={{ color: '#c8d0de', fontWeight: 600 }}>This closes the card for both of you</strong> — no need to coordinate. The turn then passes automatically to the next player.</>
-                }
-                hint={
-                  <>Closing a card doesn&apos;t delete anything. Tap it again from the card grid at any point to re-read it or continue responding.</>
-                }
-              />
-
-              <div style={{
-                fontFamily: "'DM Sans', system-ui, sans-serif",
-                color: '#1e2535',
-                fontSize: '0.58rem',
-                fontWeight: 700,
-                letterSpacing: '0.18em',
-                textTransform: 'uppercase',
-                marginBottom: 22,
-                marginTop: 4,
-              }}>
-                Extra
-              </div>
-
-              <Step
-                number={9}
-                title="Add your own question to the pool"
-                body={
-                  <>On your turn, a small <strong style={{ color: '#94a3b8', fontWeight: 600 }}>Add a question</strong> link appears above the Draw button. Tap it, write your question, choose a tier, and send it. The other player sees it and can accept or decline. If accepted, it enters the live pool and can be drawn at any point during the game.</>
-                }
-                hint={
-                  <>Only one proposal can be pending at a time. Wait for a response before sending another.</>
-                }
-              />
-            </div>
           )}
-
-          {/* ── THE FOUR TIERS ── */}
-          {tab === 'tiers' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <p style={{
-                fontFamily: "'DM Sans', system-ui, sans-serif",
-                color: '#334155',
-                fontSize: '0.80rem',
-                lineHeight: 1.7,
-                marginBottom: 6,
-              }}>
-                Every card belongs to one of four tiers. The tier tells you the approximate depth of the question before you flip it — though it&apos;s always a surprise what exactly comes up.
-              </p>
-
-              <TierCard
-                name="Light"
-                color="#4ade80"
-                tagline="Easy terrain"
-                description="Surface questions. Funny, casual, or lightly revealing. Good for warming up and learning someone's quirks without any pressure."
-                examples={[
-                  "What's the worst advice you've ever followed?",
-                  "A habit of yours would confuse a stranger instantly — what is it?",
-                ]}
-                symbol={<LightSymbol />}
-              />
-
-              <TierCard
-                name="Medium"
-                color="#60a5fa"
-                tagline="Going deeper"
-                description="Questions about patterns, preferences, and how you move through relationships. You'll start to see each other more clearly here."
-                examples={[
-                  "What do people almost always misread about you?",
-                  "You trust people... but only up to a point — where is that line?",
-                ]}
-                symbol={<MediumSymbol />}
-              />
-
-              <TierCard
-                name="Deep"
-                color="#f87171"
-                tagline="Raw territory"
-                description="Honest questions about fear, unresolved things, and what you want but won't always say. Not for the faint-hearted."
-                examples={[
-                  "Is there a version of your life that almost happened that you still think about?",
-                  "A fear that quietly shapes your decisions more than it should?",
-                ]}
-                symbol={<DeepSymbol />}
-              />
-
-              <TierCard
-                name="Spicy"
-                color="#c084fc"
-                tagline="No going back"
-                description="Attraction, tension, and charged situations. These questions go where most conversations don't. Play them when you're ready."
-                examples={[
-                  "The line between curiosity and action — where do you usually stop?",
-                  "You've held eye contact a second too long — what was behind it?",
-                ]}
-                symbol={<SpicySymbol />}
-              />
-            </div>
-          )}
-
-          {/* ── FAQ ── */}
-          {tab === 'faq' && (
-            <div>
-              <FAQ
-                q="Do we need accounts to play?"
-                a="No. You enter a name, share a link, and the game starts. Nothing is stored beyond the session."
-              />
-              <FAQ
-                q="What happens if I close the tab mid-game?"
-                a="The game is still there. Reopen the same URL and your cards and responses are exactly where you left them. The room stays active for 24 hours."
-              />
-              <FAQ
-                q="Can both players close a card?"
-                a="Yes — tapping Done closes it for both of you simultaneously. You don't need to coordinate. Either player can trigger it."
-              />
-              <FAQ
-                q="What if one player draws all the questions?"
-                a="The draw alternates automatically after every card. You can't draw twice in a row."
-              />
-              <FAQ
-                q="What happens when we run out of questions?"
-                a="The pool resets silently and starts again from the beginning. You'll never get stuck with nothing to draw."
-              />
-              <FAQ
-                q="Can we skip a question we don't like?"
-                a="There's no skip button — part of the game is not knowing what you'll get. If something feels too much, you can just close the card and talk about something else."
-              />
-              <FAQ
-                q="Are our responses saved?"
-                a="Yes. Messages are stored and tied to each card. You can re-open any card from the grid and the full thread is still there."
-              />
-              <FAQ
-                q="Can we add our own questions?"
-                a={
-                  <>On your turn, tap <strong style={{ color: '#94a3b8' }}>Add a question</strong> above the Draw button. Write it, choose a tier, and send it. The other player accepts or declines — if accepted it enters the pool immediately.</>
-                }
-              />
-              <FAQ
-                q="Is there a way to see all drawn cards?"
-                a="Yes — the grid below the turn banner shows every card drawn this session. Tap any card to re-open it and read or continue the thread."
-              />
-              <FAQ
-                q="What does the connection indicator mean?"
-                a={
-                  <>The coloured dot in the top-right shows your real-time status. <strong style={{ color: '#4ade80' }}>Green</strong> means live. <strong style={{ color: '#f59e0b' }}>Yellow</strong> means reconnecting. <strong style={{ color: '#f87171' }}>Red</strong> means disconnected — refresh the page to restore it.</>
-                }
-              />
-            </div>
-          )}
-
-        </div>
-
-        {/* ── Footer watermark ── */}
-        <div style={{
-          marginTop: 48,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 6,
-          opacity: 0.12,
-          userSelect: 'none',
-          pointerEvents: 'none',
-        }}>
-          <AbyssSignil size={10} opacity={1} />
-          <span style={{
-            fontFamily: "'Geist Mono', ui-monospace, monospace",
-            fontSize: '0.55rem',
-            color: '#c8d0de',
-            letterSpacing: '0.18em',
-            textTransform: 'lowercase',
-          }}>
-            abyssprotocol
-          </span>
-        </div>
-
-      </main>
+        </main>
+      </div>
     </>
   )
 }
