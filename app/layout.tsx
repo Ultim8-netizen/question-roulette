@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   title: "room 13 — question roulette",
   description:
     "A two-player game of blind draws. Light surface. Dark depths. No map.",
-  metadataBase: new URL("https://abyssprotocol.vercel.app"),
+  metadataBase: new URL("https://question-roulette-self.vercel.app"),
   openGraph: {
     title: "room 13 — question roulette",
     description:
