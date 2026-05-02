@@ -17,7 +17,24 @@ import { QuestionGrid }   from '@/components/QuestionGrid'
 import { DrawButton }     from '@/components/DrawButton'
 import { PickModal }      from '@/components/PickModal'
 import { ThemeToggle }    from '@/components/ThemeToggle'
+import HowToPlayPage      from '@/app/how-to-play/page'
 import { useState }       from 'react'
+
+// ---------------------------------------------------------------------------
+// localStorage key — set once per browser after dismissing the HTP overlay.
+// Both host and guest see it on first visit to any room URL.
+// ---------------------------------------------------------------------------
+
+const HTP_SEEN_KEY = 'f9q-htp-seen'
+
+function hasSeenHTP(): boolean {
+  if (typeof window === 'undefined') return false
+  try { return !!localStorage.getItem(HTP_SEEN_KEY) } catch { return false }
+}
+
+function markHTPSeen(): void {
+  try { localStorage.setItem(HTP_SEEN_KEY, '1') } catch { /* private browsing */ }
+}
 
 // ---------------------------------------------------------------------------
 // Loading spinner
@@ -44,6 +61,15 @@ export default function RoomPage() {
   const roomId = params.roomId as string
 
   const [proposeOpen, setProposeOpen] = useState(false)
+
+  // Show HTP overlay on first visit. Lazy-init reads localStorage once at
+  // mount so it never flickers: if already seen, state starts false.
+  const [showHTP, setShowHTP] = useState<boolean>(() => !hasSeenHTP())
+
+  function handleHTPClose() {
+    markHTPSeen()
+    setShowHTP(false)
+  }
 
   const {
     room,
@@ -85,9 +111,6 @@ export default function RoomPage() {
   const isMyTurn   = mySlot !== null && currentTurn === mySlot
   const canPropose = !pendingProposal
 
-  // Share URL shown on the WaitingScreen — always clean (no slot param).
-  // Players use their personal URL (?h=1 or ?p=2) for their own recovery;
-  // the share URL is what gets sent to the other person.
   const shareUrl =
     typeof window !== 'undefined'
       ? `${window.location.origin}/r/${roomId}`
@@ -96,6 +119,14 @@ export default function RoomPage() {
   const p1Name = room?.player1_name ?? 'Player 1'
   const p2Name = room?.player2_name ?? 'Player 2'
   const myName = mySlot === 1 ? p1Name : p2Name
+
+  // ── How-to-play overlay — shown first for both host and guest ──────────────
+  // Renders on top of everything, including the loading spinner, so players
+  // read the rules while the room data loads in the background.
+
+  if (showHTP) {
+    return <HowToPlayPage onClose={handleHTPClose} />
+  }
 
   // ── Early exits ────────────────────────────────────────────────────────────
   if (!room)                           return <LoadingSpinner />
@@ -117,10 +148,6 @@ export default function RoomPage() {
 
       <main style={{ minHeight:'100dvh', background:'var(--th-bg)', paddingBottom:140 }}>
 
-        {/*
-          PlayerHeader now receives myPersonalUrl so each player's chip
-          can render a copy-my-link button.
-        */}
         <PlayerHeader
           p1Name={p1Name}
           p2Name={p2Name}
