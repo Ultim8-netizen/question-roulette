@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Room13Mark, BrandWatermark } from './BrandWatermark'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 type JoinScreenProps = {
   onJoin:  (name: string) => void
@@ -28,6 +29,11 @@ export function JoinScreen({ onJoin, loading }: JoinScreenProps) {
         .js-root { animation: js-in 0.45s cubic-bezier(0.22,1,0.36,1) both; }
         .js-mark { animation: js-mark-pulse 3s ease-in-out infinite; }
       `}</style>
+
+      {/* Fixed theme toggle — sits above everything, outside all stacking contexts */}
+      <div style={{ position: 'fixed', top: 18, right: 20, zIndex: 9999 }}>
+        <ThemeToggle />
+      </div>
 
       <div
         className="js-root"

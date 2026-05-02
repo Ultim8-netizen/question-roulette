@@ -16,10 +16,11 @@ import { TurnBanner }     from '@/components/TurnBanner'
 import { QuestionGrid }   from '@/components/QuestionGrid'
 import { DrawButton }     from '@/components/DrawButton'
 import { PickModal }      from '@/components/PickModal'
+import { ThemeToggle }    from '@/components/ThemeToggle'
 import { useState }       from 'react'
 
 // ---------------------------------------------------------------------------
-// Loading spinner — shown while the initial Supabase fetch is in flight
+// Loading spinner
 // ---------------------------------------------------------------------------
 
 function LoadingSpinner() {
@@ -64,7 +65,6 @@ export default function RoomPage() {
   const [proposeOpen, setProposeOpen] = useState(false)
 
   const {
-    // data
     room,
     mySlot,
     needsJoin,
@@ -76,19 +76,16 @@ export default function RoomPage() {
     messages,
     toast,
 
-    // loading flags
     joinLoading,
     drawLoading,
     proposeLoading,
     consentLoading,
     isSendingMessage,
 
-    // realtime
     channelStatus,
     otherIsTyping,
     otherTypingIndex,
 
-    // actions
     handleJoin,
     handleDraw,
     handleOpenCard,
@@ -111,10 +108,10 @@ export default function RoomPage() {
   const myName = mySlot === 1 ? p1Name : p2Name
 
   // ── Early exits ────────────────────────────────────────────────────────────
-
-  if (!room)                                  return <LoadingSpinner />
-  if (needsJoin)                              return <JoinScreen onJoin={handleJoin} loading={joinLoading} />
-  if (!hasBothPlayers && mySlot === 1)        return <WaitingScreen shareUrl={shareUrl} />
+  // JoinScreen renders its own ThemeToggle internally.
+  if (!room)                           return <LoadingSpinner />
+  if (needsJoin)                       return <JoinScreen onJoin={handleJoin} loading={joinLoading} />
+  if (!hasBothPlayers && mySlot === 1) return <WaitingScreen shareUrl={shareUrl} />
 
   // ── Main game UI ───────────────────────────────────────────────────────────
 
@@ -124,6 +121,16 @@ export default function RoomPage() {
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=DM+Sans:wght@300;400;500&display=swap');
         * { box-sizing: border-box; }
       `}</style>
+
+      {/*
+        ThemeToggle — fixed position, highest z-index in the document.
+        Rendered here (page level) rather than inside TurnBanner so it is
+        never trapped inside an animated stacking context. This single
+        instance covers both the host and player 2 game views.
+      */}
+      <div style={{ position: 'fixed', top: 18, right: 20, zIndex: 9999 }}>
+        <ThemeToggle />
+      </div>
 
       <main style={{ minHeight: '100dvh', background: 'var(--th-bg)', paddingBottom: 140 }}>
 
