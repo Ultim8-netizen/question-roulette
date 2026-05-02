@@ -27,28 +27,9 @@ function LoadingSpinner() {
   return (
     <>
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
-      <div
-        style={{
-          minHeight:      '100dvh',
-          background:     'var(--th-bg)',
-          display:        'flex',
-          flexDirection:  'column',
-          alignItems:     'center',
-          justifyContent: 'center',
-          gap:             20,
-        }}
-      >
-        <div
-          style={{
-            width:          28,
-            height:         28,
-            borderRadius:  '50%',
-            border:         '2px solid var(--th-border-2)',
-            borderTopColor:'var(--th-text-3)',
-            animation:     'spin 0.8s linear infinite',
-          }}
-        />
-        <BrandWatermark />
+      <div style={{ minHeight:'100dvh', background:'var(--th-bg)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:20 }}>
+        <div style={{ width:28, height:28, borderRadius:'50%', border:'2px solid var(--th-border-2)', borderTopColor:'var(--th-text-3)', animation:'spin 0.8s linear infinite' }}/>
+        <BrandWatermark/>
       </div>
     </>
   )
@@ -76,6 +57,7 @@ export default function RoomPage() {
     messages,
     toast,
     unreadCardIndices,
+    myPersonalUrl,
 
     joinLoading,
     drawLoading,
@@ -103,8 +85,9 @@ export default function RoomPage() {
   const isMyTurn   = mySlot !== null && currentTurn === mySlot
   const canPropose = !pendingProposal
 
-  // The HOST's URL contains ?h=1 to encode their role — strip it from the
-  // share link so P2 receives a clean URL and isn't accidentally tagged as host.
+  // Share URL shown on the WaitingScreen — always clean (no slot param).
+  // Players use their personal URL (?h=1 or ?p=2) for their own recovery;
+  // the share URL is what gets sent to the other person.
   const shareUrl =
     typeof window !== 'undefined'
       ? `${window.location.origin}/r/${roomId}`
@@ -128,16 +111,21 @@ export default function RoomPage() {
         * { box-sizing: border-box; }
       `}</style>
 
-      <div style={{ position: 'fixed', top: 18, right: 20, zIndex: 9999 }}>
-        <ThemeToggle />
+      <div style={{ position:'fixed', top:18, right:20, zIndex:9999 }}>
+        <ThemeToggle/>
       </div>
 
-      <main style={{ minHeight: '100dvh', background: 'var(--th-bg)', paddingBottom: 140 }}>
+      <main style={{ minHeight:'100dvh', background:'var(--th-bg)', paddingBottom:140 }}>
 
+        {/*
+          PlayerHeader now receives myPersonalUrl so each player's chip
+          can render a copy-my-link button.
+        */}
         <PlayerHeader
           p1Name={p1Name}
           p2Name={p2Name}
           mySlot={mySlot ?? 1}
+          myPersonalUrl={myPersonalUrl}
         />
 
         <TurnBanner
@@ -158,20 +146,19 @@ export default function RoomPage() {
         )}
 
         {pendingProposal && pendingProposal.proposedBy === mySlot && (
-          <PendingNotice />
+          <PendingNotice/>
         )}
 
-        <div style={{ height: 16 }} />
+        <div style={{ height:16 }}/>
 
-        {/* Pass unreadCardIndices so the grid can badge cards with new messages */}
         <QuestionGrid
           cards={cards}
           onOpen={handleOpenCard}
           unreadIndices={unreadCardIndices}
         />
 
-        <div style={{ paddingBottom: 8 }}>
-          <BrandWatermark />
+        <div style={{ paddingBottom:8 }}>
+          <BrandWatermark/>
         </div>
       </main>
 
@@ -198,9 +185,7 @@ export default function RoomPage() {
           onSendMessage={handleSendMessage}
           isSendingMessage={isSendingMessage}
           onTyping={handleTyping}
-          isOtherTyping={
-            otherIsTyping && otherTypingIndex === activePick.questionIndex
-          }
+          isOtherTyping={otherIsTyping && otherTypingIndex === activePick.questionIndex}
         />
       )}
 
@@ -215,7 +200,7 @@ export default function RoomPage() {
         />
       )}
 
-      {toast && <Toast message={toast} onDone={clearToast} />}
+      {toast && <Toast message={toast} onDone={clearToast}/>}
     </>
   )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { getSupabaseBrowserClient } from '@/lib/supabase'
 import type {
   Room,
@@ -39,8 +39,13 @@ export type RoomStateReturn = {
   pendingProposal:    PendingQuestion | null
   messages:           Message[]
   toast:              string | null
-  /** Indices of cards that have received new messages since they were last opened. */
   unreadCardIndices:  number[]
+  /**
+   * The URL this player should bookmark / copy to recover their session
+   * on any device.  Host = ?h=1, P2 = ?p=2.
+   * Empty string until the slot is known (avoids SSR issues).
+   */
+  myPersonalUrl:      string
 
   // ── Loading flags ──────────────────────────────────────────────────────────
   joinLoading:        boolean
@@ -67,17 +72,29 @@ export type RoomStateReturn = {
 }
 
 // ---------------------------------------------------------------------------
-// Helper — read the ?h=1 query param from the current URL.
-// Only runs in the browser; returns false during SSR.
+// URL param helpers — only run in browser, safe during SSR
 // ---------------------------------------------------------------------------
 
+function getUrlParam(key: string): string | null {
+  if (typeof window === 'undefined') return null
+  try { return new URLSearchParams(window.location.search).get(key) } catch { return null }
+}
+
+/** Returns true when the host navigates to their ?h=1 URL. */
 function isHostUrl(): boolean {
-  if (typeof window === 'undefined') return false
-  try {
-    return new URLSearchParams(window.location.search).get('h') === '1'
-  } catch {
-    return false
-  }
+  return getUrlParam('h') === '1'
+}
+
+/** Returns true when P2 navigates to their ?p=2 URL. */
+function isP2Url(): boolean {
+  return getUrlParam('p') === '2'
+}
+
+/** Build a personal recovery URL for the given slot. */
+function buildPersonalUrl(roomId: string, slot: PlayerSlot): string {
+  if (typeof window === 'undefined') return ''
+  const param = slot === 1 ? '?h=1' : '?p=2'
+  return `${window.location.origin}/r/${roomId}${param}`
 }
 
 // ---------------------------------------------------------------------------
@@ -105,14 +122,15 @@ export function useRoomState(roomId: string): RoomStateReturn {
   const [isSendingMessage,  setIsSendingMessage]  = useState(false)
   const [otherIsTyping,     setOtherIsTyping]     = useState(false)
   const [otherTypingIndex,  setOtherTypingIndex]  = useState<number | null>(null)
-
-  /**
-   * Card indices that have received messages while they were not the active
-   * card. Cleared when handleOpenCard is called for that index.
-   */
   const [unreadCardIndices, setUnreadCardIndices] = useState<number[]>([])
 
-  // Stable refs — avoid stale closures in callbacks without re-subscribing
+  // myPersonalUrl is pure derived state — no setState+useEffect needed.
+  const myPersonalUrl = useMemo(
+    () => (mySlot !== null ? buildPersonalUrl(roomId, mySlot) : ''),
+    [mySlot, roomId],
+  )
+
+  // Stable refs
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const roomRef          = useRef<Room | null>(null)
   const mySlotRef        = useRef<PlayerSlot | null>(null)
@@ -206,7 +224,6 @@ export function useRoomState(roomId: string): RoomStateReturn {
       if (event.type === 'MESSAGE_SENT') {
         const current = activePickRef.current
         if (current && event.questionIndex === current.questionIndex) {
-          // Active card — append to the live thread.
           setMessages(prev => [
             ...prev,
             {
@@ -220,7 +237,6 @@ export function useRoomState(roomId: string): RoomStateReturn {
             },
           ])
         } else {
-          // Card is not currently open — mark it as having unread messages.
           setUnreadCardIndices(prev =>
             prev.includes(event.questionIndex)
               ? prev
@@ -288,7 +304,6 @@ export function useRoomState(roomId: string): RoomStateReturn {
       setHasBothPlayers(!!r.player2_name)
       if (r.pending_question) setPendingProposal(r.pending_question)
 
-      // Reconstruct card history from drawn_indices
       if (r.drawn_indices?.length && r.question_pool) {
         const reconstructed: DrawnCard[] = r.drawn_indices
           .map((qi: number, position: number) => {
@@ -310,14 +325,15 @@ export function useRoomState(roomId: string): RoomStateReturn {
 
       // ── Slot resolution ────────────────────────────────────────────────────
       //
-      // Priority order:
-      //   1. localStorage has a slot stored for this room → use it (most cases)
-      //   2. ?h=1 is in the URL → treat as host (slot 1), regardless of
-      //      player2_name. This covers the case where the host lost their
-      //      localStorage but bookmarked the correct host URL.
-      //   3. No slot stored, no host param, room is empty → join screen (P2)
-      //   4. No slot stored, no host param, room is full → fallback to slot 2
-      //      (P2 returning after losing their localStorage)
+      // Priority order (first match wins):
+      //   1. localStorage/sessionStorage has explicit slot → trust it
+      //   2. ?h=1 in URL → host (slot 1), re-seed localStorage
+      //   3. ?p=2 in URL → P2 (slot 2), re-seed localStorage
+      //   4. No signal, room has no P2 → show join screen
+      //   5. No signal, room is full → assume returning P2 (fallback)
+      //
+      // This means a player can move to any device by navigating to their
+      // personal URL (?h=1 or ?p=2) and the session resumes correctly.
 
       const slotKey = `f9q-slot-${roomId}`
       let stored: string | null = null
@@ -326,26 +342,26 @@ export function useRoomState(roomId: string): RoomStateReturn {
         try { stored = sessionStorage.getItem(slotKey) } catch { /* ignore */ }
       }
 
-      const hostParam = isHostUrl()
+      const resolveSlot = (slot: PlayerSlot) => {
+        setMySlot(slot)
+        // Re-seed storage so subsequent same-device loads don't need the param.
+        try { localStorage.setItem(slotKey, String(slot)) } catch { /* ignore */ }
+      }
 
       if (stored === '1') {
-        // Slot explicitly stored as host.
         setMySlot(1)
       } else if (stored === '2') {
-        // Slot explicitly stored as P2.
         setMySlot(2)
-      } else if (hostParam) {
-        // URL encodes host role — recover slot 1 even without localStorage.
-        // Also persist it so subsequent loads on this device don't need ?h=1.
-        setMySlot(1)
-        try { localStorage.setItem(slotKey, '1') } catch { /* ignore */ }
+      } else if (isHostUrl()) {
+        resolveSlot(1)
+      } else if (isP2Url()) {
+        resolveSlot(2)
       } else if (!r.player2_name) {
-        // No slot, no host param, room is empty → visitor is P2 joining.
+        // Room empty, no identity signal → new visitor is P2 joining.
         setNeedsJoin(true)
       } else {
-        // No slot, no host param, room is full → assume returning P2.
-        setMySlot(2)
-        try { localStorage.setItem(slotKey, '2') } catch { /* ignore */ }
+        // Room full, no identity signal → assume returning P2.
+        resolveSlot(2)
       }
     }
 
@@ -369,8 +385,17 @@ export function useRoomState(roomId: string): RoomStateReturn {
     }
 
     const data = await res.json()
-    sessionStorage.setItem(`f9q-slot-${roomId}`, '2')
+
+    // Store slot 2 identity.
     try { localStorage.setItem(`f9q-slot-${roomId}`, '2') } catch { /* ignore */ }
+    try { sessionStorage.setItem(`f9q-slot-${roomId}`, '2') } catch { /* ignore */ }
+
+    // Encode P2 identity into the URL so this tab and any bookmark of it
+    // recovers slot 2 on any device without needing localStorage.
+    try {
+      window.history.replaceState(null, '', `/r/${roomId}?p=2`)
+    } catch { /* ignore — non-critical */ }
+
     setMySlot(2)
     setNeedsJoin(false)
     setHasBothPlayers(true)
@@ -442,7 +467,6 @@ export function useRoomState(roomId: string): RoomStateReturn {
   }
 
   function handleOpenCard(card: DrawnCard) {
-    // Clear any unread indicator for this card before opening.
     setUnreadCardIndices(prev => prev.filter(i => i !== card.questionIndex))
     setMessages([])
     setActivePick({
@@ -594,9 +618,7 @@ export function useRoomState(roomId: string): RoomStateReturn {
     })
   }
 
-  function clearToast() {
-    setToast(null)
-  }
+  function clearToast() { setToast(null) }
 
   // ── Return ─────────────────────────────────────────────────────────────────
 
@@ -612,6 +634,7 @@ export function useRoomState(roomId: string): RoomStateReturn {
     messages,
     toast,
     unreadCardIndices,
+    myPersonalUrl,
 
     joinLoading,
     drawLoading,
