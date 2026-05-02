@@ -21,8 +21,7 @@ import HowToPlayPage      from '@/app/how-to-play/page'
 import { useState }       from 'react'
 
 // ---------------------------------------------------------------------------
-// sessionStorage — resets per browser tab, so every new tab (including P2
-// opening a fresh link) always sees HTP. Refreshing the same tab skips it.
+// sessionStorage — resets per browser tab
 // ---------------------------------------------------------------------------
 
 const HTP_SEEN_KEY = 'f9q-htp-seen'
@@ -62,8 +61,6 @@ export default function RoomPage() {
 
   const [proposeOpen, setProposeOpen] = useState(false)
 
-  // Lazy-init: read sessionStorage once at mount.
-  // New tab = no key = P2 sees HTP. Refresh = key exists = skipped.
   const [showHTP, setShowHTP] = useState<boolean>(() => !hasSeenHTP())
 
   function handleHTPClose() {
@@ -90,7 +87,12 @@ export default function RoomPage() {
   const p2Name = room?.player2_name ?? 'Player 2'
   const myName = mySlot === 1 ? p1Name : p2Name
 
-  // ── HTP overlay — fires first for both host and guest on every new tab ──
+  // Stable draft key scoped to room + question so drafts never bleed across cards
+  const draftKey = activePick
+    ? `f9q-draft-${roomId}-${activePick.questionIndex}`
+    : ''
+
+  // ── HTP overlay ──────────────────────────────────────────────────────────
   if (showHTP) return <HowToPlayPage onClose={handleHTPClose} />
 
   // ── Early exits ──────────────────────────────────────────────────────────
@@ -152,6 +154,7 @@ export default function RoomPage() {
           isSendingMessage={isSendingMessage}
           onTyping={handleTyping}
           isOtherTyping={otherIsTyping && otherTypingIndex === activePick.questionIndex}
+          draftKey={draftKey}
         />
       )}
 

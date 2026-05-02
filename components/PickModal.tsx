@@ -7,7 +7,7 @@ import { useTheme } from '@/context/ThemeContext'
 import { MessageThread } from '@/components/MessageThread'
 
 // ---------------------------------------------------------------------------
-// Watermark — opacity-based so it adapts to any background
+// Watermark
 // ---------------------------------------------------------------------------
 
 function makeWatermarkBg(name: string): string {
@@ -27,8 +27,7 @@ function makeWatermarkBg(name: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Patterns — unchanged, they use tier colors directly which are already
-// cross-theme safe (same hue, tierConfig handles surface bg separately)
+// Patterns
 // ---------------------------------------------------------------------------
 
 function BotanicaPattern({ color }: { color: string }) {
@@ -159,6 +158,8 @@ type PickModalProps = {
   isSendingMessage: boolean
   onTyping:         () => void
   isOtherTyping:    boolean
+  /** sessionStorage key for the unsent draft — passed through to MessageThread */
+  draftKey:         string
 }
 
 type TapState = 'idle' | 'flipping' | 'revealed'
@@ -167,6 +168,7 @@ export function PickModal({
   questionText, tier, isCustom, drawnByName, isMyDraw, onClose,
   questionIndex: _questionIndex, mySlot, myName,
   messages, onSendMessage, isSendingMessage, onTyping, isOtherTyping,
+  draftKey,
 }: PickModalProps) {
   const [tapState, setTapState] = useState<TapState>('idle')
   const { isDark }  = useTheme()
@@ -185,7 +187,6 @@ export function PickModal({
   const tapHintLabel     = isMyDraw ? 'tap to reveal your question' : `tap to see ${drawnByName}'s card`
   const taglineOverride  = isMyDraw ? conf.tagline : `from ${drawnByName}`
 
-  // Card face style — sourced entirely from tierConfig (already light/dark aware)
   const cardFaceStyle = {
     background: `linear-gradient(160deg, ${conf.midBg} 0%, ${conf.darkBg} 100%)`,
     border:     `1.5px solid ${conf.border}`,
@@ -217,10 +218,6 @@ export function PickModal({
         .pm-no-select  { -webkit-user-select:none; -moz-user-select:none; user-select:none; }
       `}</style>
 
-      {/*
-        Backdrop — var(--th-overlay) contains the per-theme alpha color,
-        so it dims correctly on light themes without being pitch black.
-      */}
       <div
         className="pm-backdrop pm-font-sans fixed inset-0 z-50 flex items-end justify-center px-4 pb-6"
         style={{
@@ -232,38 +229,35 @@ export function PickModal({
       >
         <div className="pm-rise w-full" style={{ maxWidth: 390 }}>
 
-          {/* Attribution header — text colors via theme tokens */}
+          {/* Attribution header */}
           <div className="flex items-center justify-between mb-3 px-0.5">
             <div className="flex items-center gap-2">
               <div style={{
                 width: 6, height: 6, borderRadius: '50%',
                 background: conf.primary, boxShadow: `0 0 8px ${conf.primary}`,
               }}/>
-              <span style={{
-                color:    'var(--th-text-2)',
-                fontSize: '0.78rem', fontWeight: 400,
-              }}>
+              <span style={{ color: 'var(--th-text-2)', fontSize: '0.78rem', fontWeight: 400 }}>
                 {attributionLabel}
               </span>
             </div>
             <div className="flex items-center gap-2">
               {isCustom && (
                 <span style={{
-                  fontSize:   '0.68rem', fontWeight: 500,
-                  padding:    '2px 8px', borderRadius: 99,
+                  fontSize: '0.68rem', fontWeight: 500,
+                  padding: '2px 8px', borderRadius: 99,
                   background: `${conf.primary}14`,
-                  border:     `1px solid ${conf.border}`,
-                  color:      conf.primary, letterSpacing: '0.06em',
+                  border: `1px solid ${conf.border}`,
+                  color: conf.primary, letterSpacing: '0.06em',
                 }}>
                   CUSTOM
                 </span>
               )}
               <span style={{
-                fontSize:      '0.68rem', fontWeight: 600,
-                padding:       '2px 10px', borderRadius: 99,
-                background:    `${conf.primary}12`,
-                border:        `1px solid ${conf.border}`,
-                color:         conf.primary,
+                fontSize: '0.68rem', fontWeight: 600,
+                padding: '2px 10px', borderRadius: 99,
+                background: `${conf.primary}12`,
+                border: `1px solid ${conf.border}`,
+                color: conf.primary,
                 letterSpacing: '0.10em', textTransform: 'uppercase',
               }}>
                 {conf.label}
@@ -276,16 +270,16 @@ export function PickModal({
             <div style={{ height: 340, perspective: '1400px' }}>
               <div
                 style={{
-                  position:       'absolute', inset: 0,
+                  position: 'absolute', inset: 0,
                   transformStyle: 'preserve-3d',
-                  transition:     'transform 0.72s cubic-bezier(0.4,0.0,0.2,1)',
-                  transform:      tapState === 'flipping' ? 'rotateY(180deg)' : 'rotateY(0deg)',
-                  cursor:         tapState === 'idle' ? 'pointer' : 'default',
-                  borderRadius:   22, width: '100%', height: 340,
+                  transition: 'transform 0.72s cubic-bezier(0.4,0.0,0.2,1)',
+                  transform: tapState === 'flipping' ? 'rotateY(180deg)' : 'rotateY(0deg)',
+                  cursor: tapState === 'idle' ? 'pointer' : 'default',
+                  borderRadius: 22, width: '100%', height: 340,
                 }}
                 onClick={handleTap}
               >
-                {/* Front face — card back design */}
+                {/* Front face */}
                 <div
                   className="absolute inset-0 overflow-hidden"
                   style={{ borderRadius: 22, backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', ...cardFaceStyle }}
@@ -309,8 +303,8 @@ export function PickModal({
                       <TierSymbol tier={tier} color={conf.primary} size={52}/>
                     </div>
                     <span className="pm-font-serif" style={{
-                      color:       `${conf.primary}90`,
-                      fontSize:    '0.85rem', fontWeight: 500,
+                      color: `${conf.primary}90`,
+                      fontSize: '0.85rem', fontWeight: 500,
                       letterSpacing: '0.08em', fontStyle: 'italic',
                     }}>
                       {taglineOverride}
@@ -324,8 +318,8 @@ export function PickModal({
                         <rect x="5" y="10" width="14" height="12" rx="3" stroke={conf.primary} strokeWidth="1.5" opacity="0.55"/>
                       </svg>
                       <span className="pm-font-sans" style={{
-                        color:         `${conf.primary}70`,
-                        fontSize:      '0.72rem', fontWeight: 400, letterSpacing: '0.08em',
+                        color: `${conf.primary}70`,
+                        fontSize: '0.72rem', fontWeight: 400, letterSpacing: '0.08em',
                       }}>
                         {tapHintLabel}
                       </span>
@@ -333,17 +327,17 @@ export function PickModal({
                   </div>
                 </div>
 
-                {/* Back face — shown mid-flip, question text */}
+                {/* Back face */}
                 <div
                   className="absolute inset-0 flex flex-col pm-no-select"
                   style={{
-                    borderRadius:          22,
-                    backfaceVisibility:    'hidden',
+                    borderRadius: 22,
+                    backfaceVisibility: 'hidden',
                     WebkitBackfaceVisibility: 'hidden',
-                    transform:             'rotateY(180deg)',
+                    transform: 'rotateY(180deg)',
                     ...cardFaceStyle,
-                    padding:               '28px 26px 24px',
-                    overflow:              'hidden',
+                    padding: '28px 26px 24px',
+                    overflow: 'hidden',
                   }}
                 >
                   <div aria-hidden="true" style={{
@@ -358,9 +352,9 @@ export function PickModal({
                   }}/>
                   <div className="pm-text-in flex-1 flex items-center">
                     <p className="pm-font-serif" style={{
-                      color:         conf.textLight,
-                      fontSize:      '1.22rem', fontWeight: 500,
-                      lineHeight:    1.62, letterSpacing: '0.01em',
+                      color: conf.textLight,
+                      fontSize: '1.22rem', fontWeight: 500,
+                      lineHeight: 1.62, letterSpacing: '0.01em',
                     }}>
                       {questionText}
                     </p>
@@ -389,31 +383,29 @@ export function PickModal({
                 }}/>
                 <div className="pm-text-in">
                   <p className="pm-font-serif" style={{
-                    color:      conf.textLight,
-                    fontSize:   '1.22rem', fontWeight: 500,
+                    color: conf.textLight,
+                    fontSize: '1.22rem', fontWeight: 500,
                     lineHeight: 1.62, letterSpacing: '0.01em', marginBottom: 0,
                   }}>
                     {questionText}
                   </p>
                 </div>
 
-                {/* Attribution sub-label for other player's draw */}
                 {!isMyDraw && (
                   <p className="pm-font-sans" style={{
-                    color:      `${conf.primary}80`,
-                    fontSize:   '0.70rem', marginTop: 10, lineHeight: 1.55,
+                    color: `${conf.primary}80`,
+                    fontSize: '0.70rem', marginTop: 10, lineHeight: 1.55,
                   }}>
                     {drawnByName} drew this card. Both of you can respond below.
                   </p>
                 )}
 
-                {/* Tier footer row */}
                 <div className="flex items-center justify-between mt-4 mb-0">
                   <div className="flex items-center gap-2">
                     <TierSymbol tier={tier} color={conf.primary} size={14}/>
                     <span className="pm-font-sans" style={{
-                      color:         `${conf.primary}70`,
-                      fontSize:      '0.65rem', fontWeight: 600,
+                      color: `${conf.primary}70`,
+                      fontSize: '0.65rem', fontWeight: 600,
                       letterSpacing: '0.14em', textTransform: 'uppercase',
                     }}>
                       {conf.label}
@@ -427,25 +419,31 @@ export function PickModal({
                 </div>
 
                 <MessageThread
-                  messages={messages} mySlot={mySlot} myName={myName}
-                  onSend={onSendMessage} isSending={isSendingMessage}
-                  accentColor={conf.primary} onTyping={onTyping} isOtherTyping={isOtherTyping}
+                  messages={messages}
+                  mySlot={mySlot}
+                  myName={myName}
+                  onSend={onSendMessage}
+                  isSending={isSendingMessage}
+                  accentColor={conf.primary}
+                  onTyping={onTyping}
+                  isOtherTyping={isOtherTyping}
+                  draftKey={draftKey}
                 />
               </div>
             </div>
           )}
 
-          {/* Done button — uses theme surface tokens, not hardcoded dark hex */}
+          {/* Done button */}
           {tapState === 'revealed' && (
             <button
               className="pm-btn-in pm-font-sans mt-4 w-full rounded-2xl text-sm font-medium tracking-wide active:opacity-60"
               style={{
-                padding:    '15px 0',
+                padding: '15px 0',
                 background: 'var(--th-surface)',
-                border:     '1px solid var(--th-border-2)',
-                color:      'var(--th-text-1)',
+                border: '1px solid var(--th-border-2)',
+                color: 'var(--th-text-1)',
                 letterSpacing: '0.04em',
-                cursor:     'pointer',
+                cursor: 'pointer',
                 transition: 'background 0.2s ease, border-color 0.2s ease',
               }}
               onMouseEnter={e => {

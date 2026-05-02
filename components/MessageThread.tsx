@@ -12,6 +12,8 @@ type MessageThreadProps = {
   accentColor:   string
   onTyping:      () => void
   isOtherTyping: boolean
+  /** sessionStorage key used to persist the unsent draft across card closes */
+  draftKey:      string
 }
 
 function formatTime(iso: string): string {
@@ -28,12 +30,27 @@ export function MessageThread({
   accentColor,
   onTyping,
   isOtherTyping,
+  draftKey,
 }: MessageThreadProps) {
-  const [draft,    setDraft]    = useState('')
-  const scrollRef               = useRef<HTMLDivElement>(null)
-  const textareaRef             = useRef<HTMLTextAreaElement>(null)
-  const lastTypingRef           = useRef<number>(0)
-  const THROTTLE_MS             = 1_500
+  // Restore any unsent draft that survived a previous card close
+  const [draft, setDraft] = useState<string>(() => {
+    try { return sessionStorage.getItem(draftKey) ?? '' } catch { return '' }
+  })
+
+  const scrollRef       = useRef<HTMLDivElement>(null)
+  const textareaRef     = useRef<HTMLTextAreaElement>(null)
+  const lastTypingRef   = useRef<number>(0)
+  const THROTTLE_MS     = 1_500
+
+  // Sync textarea height on mount if a draft was restored
+  useEffect(() => {
+    const ta = textareaRef.current
+    if (ta && draft) {
+      ta.style.height = 'auto'
+      ta.style.height = Math.min(ta.scrollHeight, 96) + 'px'
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     const el = scrollRef.current
@@ -42,7 +59,15 @@ export function MessageThread({
 
   function handleInput(e: React.ChangeEvent<HTMLTextAreaElement>) {
     const ta = e.target
-    setDraft(ta.value)
+    const value = ta.value
+    setDraft(value)
+
+    // Persist every keystroke so no text is lost on forced close
+    try {
+      if (value) { sessionStorage.setItem(draftKey, value) }
+      else       { sessionStorage.removeItem(draftKey) }
+    } catch { /* private browsing — ignore */ }
+
     ta.style.height = 'auto'
     ta.style.height = Math.min(ta.scrollHeight, 96) + 'px'
 
@@ -58,6 +83,10 @@ export function MessageThread({
     if (!trimmed || isSending) return
     setDraft('')
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
+
+    // Clear the saved draft only after a successful send
+    try { sessionStorage.removeItem(draftKey) } catch { /* ignore */ }
+
     await onSend(trimmed)
     textareaRef.current?.focus()
   }
