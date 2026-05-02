@@ -10,46 +10,100 @@ const TIER_COLORS = ['#4ade80', '#60a5fa', '#f87171', '#c084fc']
 export const SLOT_KEY      = (roomId: string) => `f9q-slot-${roomId}`
 export const LAST_ROOM_KEY = 'f9q-last-room'
 
-// ---------------------------------------------------------------------------
-// Room13Logo
-// All strokes use currentColor so a parent animation can cycle the SVG
-// through every tier color by animating only the CSS `color` property.
-// Shape is the favicon design: a wheel with a card overlapping it.
-// ---------------------------------------------------------------------------
-
-function Room13Logo({ size = 56 }: { size?: number }) {
+function Room13Logo({ width = 140, height = 64 }: { width?: number; height?: number }) {
   return (
     <svg
-      width={size} height={size}
-      viewBox="0 0 32 32" fill="none"
-      aria-hidden="true"
-      style={{ flexShrink: 0 }}
+      width={width} height={height}
+      viewBox="0 0 680 310"
+      fill="none" aria-hidden="true"
+      style={{ flexShrink: 0, display: 'block' }}
     >
-      {/* wheel outer */}
-      <circle cx="16" cy="20" r="10"
-        fill="var(--th-surface)" stroke="currentColor" strokeWidth="1.1" />
-      {/* wheel inner ring */}
-      <circle cx="16" cy="20" r="7.5"
-        fill="none" stroke="currentColor" strokeWidth="0.4" opacity="0.35" />
-      {/* spokes */}
-      <g stroke="currentColor" strokeWidth="0.65" strokeLinecap="round" opacity="0.55">
-        <line x1="21.3" y1="14.7" x2="23.1" y2="12.9" />
-        <line x1="23.5" y1="20"   x2="26"   y2="20"   />
-        <line x1="21.3" y1="25.3" x2="23.1" y2="27.1" />
-        <line x1="16"   y1="27.5" x2="16"   y2="30"   />
-        <line x1="10.7" y1="25.3" x2="8.9"  y2="27.1" />
-        <line x1="8.5"  y1="20"   x2="6"    y2="20"   />
-        <line x1="10.7" y1="14.7" x2="8.9"  y2="12.9" />
+      <circle cx="340" cy="172" r="64"
+        fill="var(--th-surface)" stroke="currentColor" strokeWidth="2.2" />
+      <circle cx="340" cy="172" r="48"
+        fill="none" stroke="currentColor" strokeWidth="0.9" opacity="0.38" />
+      <g opacity="0.11" fill="currentColor">
+        <path d="M340,172 L340,124 A48,48 0 0,1 373.9,137.9 Z" />
+        <path d="M340,172 L388,172 A48,48 0 0,1 373.9,206.1 Z" />
+        <path d="M340,172 L340,220 A48,48 0 0,1 306.1,206.1 Z" />
+        <path d="M340,172 L292,172 A48,48 0 0,1 306.1,137.9 Z" />
       </g>
-      {/* hub */}
-      <circle cx="16" cy="20" r="1.8" fill="currentColor" />
-      {/* card overlapping wheel */}
-      <rect x="11" y="5" width="10" height="14" rx="1.8"
-        fill="var(--th-surface)" stroke="currentColor" strokeWidth="1.2" />
-      <line x1="13.5" y1="9"    x2="18.5" y2="9"
-        stroke="currentColor" strokeWidth="0.9" strokeLinecap="round" opacity="0.60" />
-      <line x1="13.5" y1="11.5" x2="18.5" y2="11.5"
-        stroke="currentColor" strokeWidth="0.9" strokeLinecap="round" opacity="0.38" />
+      <g stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" opacity="0.60">
+        <line x1="340" y1="124" x2="340" y2="108" />
+        <line x1="373.9" y1="137.9" x2="385.3" y2="126.5" />
+        <line x1="388" y1="172" x2="404" y2="172" />
+        <line x1="373.9" y1="206.1" x2="385.3" y2="217.5" />
+        <line x1="340" y1="220" x2="340" y2="236" />
+        <line x1="306.1" y1="206.1" x2="294.7" y2="217.5" />
+        <line x1="292" y1="172" x2="276" y2="172" />
+        <line x1="306.1" y1="137.9" x2="294.7" y2="126.5" />
+      </g>
+      <circle cx="340" cy="172" r="8"
+        fill="var(--th-surface)" stroke="currentColor" strokeWidth="1.6" />
+      <circle cx="340" cy="172" r="2.5" fill="currentColor" />
+      <g transform="rotate(-56,340,242)">
+        <rect x="318" y="166" width="44" height="76" rx="5"
+          fill="var(--th-surface)" stroke="currentColor" strokeWidth="1.0" opacity="0.62" />
+        <line x1="325" y1="179" x2="355" y2="179"
+          stroke="currentColor" strokeWidth="0.8" strokeLinecap="round" opacity="0.28" />
+        <circle cx="340" cy="216" r="8"
+          fill="none" stroke="currentColor" strokeWidth="0.9" opacity="0.22" />
+      </g>
+      <g transform="rotate(56,340,242)">
+        <rect x="318" y="166" width="44" height="76" rx="5"
+          fill="var(--th-surface)" stroke="currentColor" strokeWidth="1.0" opacity="0.62" />
+        <line x1="325" y1="179" x2="355" y2="179"
+          stroke="currentColor" strokeWidth="0.8" strokeLinecap="round" opacity="0.28" />
+        <circle cx="340" cy="216" r="8"
+          fill="none" stroke="currentColor" strokeWidth="0.9" opacity="0.22" />
+      </g>
+      <g transform="rotate(-40,340,242)">
+        <rect x="318" y="166" width="44" height="76" rx="5"
+          fill="var(--th-surface)" stroke="currentColor" strokeWidth="1.1" opacity="0.74" />
+        <line x1="325" y1="179" x2="355" y2="179"
+          stroke="currentColor" strokeWidth="0.9" strokeLinecap="round" opacity="0.35" />
+        <circle cx="340" cy="216" r="8"
+          fill="none" stroke="currentColor" strokeWidth="0.9" opacity="0.28" />
+      </g>
+      <g transform="rotate(40,340,242)">
+        <rect x="318" y="166" width="44" height="76" rx="5"
+          fill="var(--th-surface)" stroke="currentColor" strokeWidth="1.1" opacity="0.74" />
+        <line x1="325" y1="179" x2="355" y2="179"
+          stroke="currentColor" strokeWidth="0.9" strokeLinecap="round" opacity="0.35" />
+        <circle cx="340" cy="216" r="8"
+          fill="none" stroke="currentColor" strokeWidth="0.9" opacity="0.28" />
+      </g>
+      <g transform="rotate(-24,340,242)">
+        <rect x="318" y="166" width="44" height="76" rx="5"
+          fill="var(--th-surface)" stroke="currentColor" strokeWidth="1.3" opacity="0.86" />
+        <line x1="325" y1="179" x2="355" y2="179"
+          stroke="currentColor" strokeWidth="1.0" strokeLinecap="round" opacity="0.44" />
+        <line x1="325" y1="186" x2="355" y2="186"
+          stroke="currentColor" strokeWidth="1.0" strokeLinecap="round" opacity="0.28" />
+        <circle cx="340" cy="216" r="8"
+          fill="none" stroke="currentColor" strokeWidth="1.0" opacity="0.38" />
+        <circle cx="340" cy="216" r="2.2" fill="currentColor" opacity="0.38" />
+      </g>
+      <g transform="rotate(24,340,242)">
+        <rect x="318" y="166" width="44" height="76" rx="5"
+          fill="var(--th-surface)" stroke="currentColor" strokeWidth="1.3" opacity="0.86" />
+        <line x1="325" y1="179" x2="355" y2="179"
+          stroke="currentColor" strokeWidth="1.0" strokeLinecap="round" opacity="0.44" />
+        <line x1="325" y1="186" x2="355" y2="186"
+          stroke="currentColor" strokeWidth="1.0" strokeLinecap="round" opacity="0.28" />
+        <circle cx="340" cy="216" r="8"
+          fill="none" stroke="currentColor" strokeWidth="1.0" opacity="0.38" />
+        <circle cx="340" cy="216" r="2.2" fill="currentColor" opacity="0.38" />
+      </g>
+      <rect x="318" y="166" width="44" height="76" rx="5"
+        fill="var(--th-surface)" stroke="currentColor" strokeWidth="1.6" />
+      <line x1="325" y1="179" x2="355" y2="179"
+        stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" opacity="0.60" />
+      <line x1="325" y1="186" x2="355" y2="186"
+        stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" opacity="0.38" />
+      <circle cx="340" cy="216" r="8"
+        fill="none" stroke="currentColor" strokeWidth="1.2" opacity="0.65" />
+      <circle cx="340" cy="216" r="2.5" fill="currentColor" opacity="0.80" />
     </svg>
   )
 }
@@ -60,92 +114,44 @@ function Room13Logo({ size = 56 }: { size?: number }) {
 
 type ResumeState =
   | { status: 'checking' }
-  | { status: 'found';   roomId: string; player2Joined: boolean }
+  | { status: 'found'; roomId: string; player2Joined: boolean }
   | { status: 'none' }
 
 function ResumeBanner({
-  resume,
-  onResume,
-  onDismiss,
+  resume, onResume, onDismiss,
 }: {
-  resume:    Extract<ResumeState, { status: 'found' }>
-  onResume:  () => void
+  resume: Extract<ResumeState, { status: 'found' }>
+  onResume: () => void
   onDismiss: () => void
 }) {
-  const label = resume.player2Joined
-    ? 'Your game is still active'
-    : 'You have an unjoined room'
-  const sub = resume.player2Joined
-    ? 'Pick up where you left off.'
-    : 'Your link is still waiting for them.'
+  const label = resume.player2Joined ? 'Your game is still active' : 'You have an unjoined room'
+  const sub   = resume.player2Joined ? 'Pick up where you left off.' : 'Your link is still waiting for them.'
 
   return (
     <>
       <style>{`
         @keyframes rb-in { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
-        .rb-root { animation: rb-in 0.35s cubic-bezier(0.22,1,0.36,1) both; }
+        .rb-root { animation: rb-in 0.35s cubic-bezier(0.22,1,0.36,1) both; font-family:'DM Sans',system-ui,sans-serif; }
       `}</style>
-      <div
-        className="rb-root w-full"
-        style={{
-          marginBottom:  20,
-          padding:       '13px 16px',
-          borderRadius:  14,
-          background:    'rgba(74,222,128,0.05)',
-          border:        '1px solid rgba(74,222,128,0.18)',
-          display:       'flex',
-          alignItems:    'center',
-          gap:           12,
-          fontFamily:    "'DM Sans', system-ui, sans-serif",
-        }}
-      >
-        <div style={{
-          width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-          background: '#4ade80', boxShadow: '0 0 8px #4ade80',
-        }} />
-
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ color: '#4ade80', fontSize: '0.72rem', fontWeight: 600, letterSpacing: '0.04em' }}>
-            {label}
-          </div>
-          <div style={{ color: 'var(--th-text-3)', fontSize: '0.65rem', marginTop: 1 }}>
-            {sub}
-          </div>
+      <div className="rb-root w-full" style={{
+        marginBottom: 20, padding: '13px 16px', borderRadius: 14,
+        background: 'rgba(74,222,128,0.05)', border: '1px solid rgba(74,222,128,0.18)',
+        display: 'flex', alignItems: 'center', gap: 12,
+      }}>
+        <div style={{ width:8, height:8, borderRadius:'50%', flexShrink:0, background:'#4ade80', boxShadow:'0 0 8px #4ade80' }} />
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ color:'#4ade80', fontSize:'0.72rem', fontWeight:600, letterSpacing:'0.04em' }}>{label}</div>
+          <div style={{ color:'var(--th-text-3)', fontSize:'0.65rem', marginTop:1 }}>{sub}</div>
         </div>
-
-        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-          <button
-            onClick={onDismiss}
-            style={{
-              background: 'none', border: '1px solid var(--th-border)',
-              borderRadius: 8, padding: '5px 10px',
-              color: 'var(--th-text-4)', fontSize: '0.65rem', cursor: 'pointer',
-              fontFamily: "'DM Sans', system-ui, sans-serif",
-              transition: 'color 0.15s ease, border-color 0.15s ease',
-            }}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLButtonElement).style.color = 'var(--th-text-3)'
-              ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--th-border-2)'
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLButtonElement).style.color = 'var(--th-text-4)'
-              ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--th-border)'
-            }}
-          >
+        <div style={{ display:'flex', gap:8, flexShrink:0 }}>
+          <button onClick={onDismiss} style={{ background:'none', border:'1px solid var(--th-border)', borderRadius:8, padding:'5px 10px', color:'var(--th-text-4)', fontSize:'0.65rem', cursor:'pointer', fontFamily:"'DM Sans',system-ui,sans-serif", transition:'color 0.15s ease,border-color 0.15s ease' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color='var(--th-text-3)'; (e.currentTarget as HTMLButtonElement).style.borderColor='var(--th-border-2)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color='var(--th-text-4)'; (e.currentTarget as HTMLButtonElement).style.borderColor='var(--th-border)' }}>
             Dismiss
           </button>
-          <button
-            onClick={onResume}
-            style={{
-              background: 'rgba(74,222,128,0.10)', border: '1px solid rgba(74,222,128,0.28)',
-              borderRadius: 8, padding: '5px 12px',
-              color: '#4ade80', fontSize: '0.65rem', fontWeight: 600, cursor: 'pointer',
-              fontFamily: "'DM Sans', system-ui, sans-serif",
-              transition: 'background 0.15s ease',
-            }}
-            onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.background = 'rgba(74,222,128,0.16)')}
-            onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.background = 'rgba(74,222,128,0.10)')}
-          >
+          <button onClick={onResume} style={{ background:'rgba(74,222,128,0.10)', border:'1px solid rgba(74,222,128,0.28)', borderRadius:8, padding:'5px 12px', color:'#4ade80', fontSize:'0.65rem', fontWeight:600, cursor:'pointer', fontFamily:"'DM Sans',system-ui,sans-serif", transition:'background 0.15s ease' }}
+            onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.background='rgba(74,222,128,0.16)')}
+            onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.background='rgba(74,222,128,0.10)')}>
             Resume
           </button>
         </div>
@@ -175,7 +181,6 @@ export default function HomePage() {
 
       let slot: string | null = null
       try { slot = localStorage.getItem(SLOT_KEY(lastRoomId)) } catch { /* ignore */ }
-
       if (slot !== '1') {
         try { localStorage.removeItem(LAST_ROOM_KEY) } catch { /* ignore */ }
         setResume({ status: 'none' }); return
@@ -185,28 +190,18 @@ export default function HomePage() {
         const { getSupabaseBrowserClient } = await import('@/lib/supabase')
         const supabase = getSupabaseBrowserClient()
         const { data, error } = await supabase
-          .from('roulette_rooms')
-          .select('id, player2_name, expires_at')
-          .eq('id', lastRoomId)
-          .single()
+          .from('roulette_rooms').select('id, player2_name, expires_at')
+          .eq('id', lastRoomId).single()
 
         if (error || !data) {
           try { localStorage.removeItem(LAST_ROOM_KEY) } catch { /* ignore */ }
           setResume({ status: 'none' }); return
         }
         if (new Date(data.expires_at) < new Date()) {
-          try {
-            localStorage.removeItem(LAST_ROOM_KEY)
-            localStorage.removeItem(SLOT_KEY(lastRoomId))
-          } catch { /* ignore */ }
+          try { localStorage.removeItem(LAST_ROOM_KEY); localStorage.removeItem(SLOT_KEY(lastRoomId)) } catch { /* ignore */ }
           setResume({ status: 'none' }); return
         }
-
-        setResume({
-          status:        'found',
-          roomId:        lastRoomId,
-          player2Joined: !!data.player2_name,
-        })
+        setResume({ status: 'found', roomId: lastRoomId, player2Joined: !!data.player2_name })
       } catch { setResume({ status: 'none' }) }
     }
     void checkLastRoom()
@@ -229,138 +224,106 @@ export default function HomePage() {
   async function handleCreate() {
     const trimmed = name.trim()
     if (!trimmed || loading) return
-    setLoading(true)
-    setError(null)
+    setLoading(true); setError(null)
     const res = await fetch('/api/rooms', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ player1_name: trimmed }),
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ player1_name: trimmed }),
     })
-    if (!res.ok) {
-      setLoading(false)
-      setError('Could not create room. Try again.')
-      return
-    }
+    if (!res.ok) { setLoading(false); setError('Could not create room. Try again.'); return }
     const { roomId } = await res.json()
-    try {
-      localStorage.setItem(SLOT_KEY(roomId), '1')
-      localStorage.setItem(LAST_ROOM_KEY, roomId)
-    } catch { /* private browsing */ }
+    try { localStorage.setItem(SLOT_KEY(roomId), '1'); localStorage.setItem(LAST_ROOM_KEY, roomId) } catch { /* private browsing */ }
     router.push(`/r/${roomId}?h=1`)
   }
 
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,300;1,400;1,500;1,600&family=DM+Sans:wght@300;400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400;1,500&family=DM+Sans:wght@300;400;500&display=swap');
 
-        /* ── Background orbs ── */
-        @keyframes hp-orb-1 { 0%,100%{transform:translate(0,0) scale(1);opacity:0.55} 50%{transform:translate(20px,-14px) scale(1.08);opacity:0.75} }
-        @keyframes hp-orb-2 { 0%,100%{transform:translate(0,0) scale(1);opacity:0.45} 50%{transform:translate(-16px,18px) scale(1.06);opacity:0.65} }
-        @keyframes hp-orb-3 { 0%,100%{transform:translate(0,0) scale(1);opacity:0.40} 50%{transform:translate(12px,14px) scale(1.07);opacity:0.60} }
-        @keyframes hp-orb-4 { 0%,100%{transform:translate(0,0) scale(1);opacity:0.35} 50%{transform:translate(-10px,-16px) scale(1.05);opacity:0.55} }
+        @keyframes hp-orb-1 { 0%,100%{transform:translate(0,0) scale(1);opacity:0.58} 50%{transform:translate(20px,-14px) scale(1.08);opacity:0.80} }
+        @keyframes hp-orb-2 { 0%,100%{transform:translate(0,0) scale(1);opacity:0.48} 50%{transform:translate(-16px,18px) scale(1.06);opacity:0.68} }
+        @keyframes hp-orb-3 { 0%,100%{transform:translate(0,0) scale(1);opacity:0.44} 50%{transform:translate(12px,14px) scale(1.07);opacity:0.64} }
+        @keyframes hp-orb-4 { 0%,100%{transform:translate(0,0) scale(1);opacity:0.38} 50%{transform:translate(-10px,-16px) scale(1.05);opacity:0.58} }
 
-        /* ── Logo color cycle through all four tier colors ── */
         @keyframes hp-logo-cycle {
-          0%   { color: #4ade80; filter: drop-shadow(0 0 14px rgba(74,222,128,0.60)); }
-          25%  { color: #60a5fa; filter: drop-shadow(0 0 14px rgba(96,165,250,0.60)); }
-          50%  { color: #f87171; filter: drop-shadow(0 0 14px rgba(248,113,113,0.60)); }
-          75%  { color: #c084fc; filter: drop-shadow(0 0 14px rgba(192,132,252,0.60)); }
-          100% { color: #4ade80; filter: drop-shadow(0 0 14px rgba(74,222,128,0.60)); }
+          0%   { color: #4ade80; filter: drop-shadow(0 0 18px rgba(74,222,128,0.70)); }
+          25%  { color: #60a5fa; filter: drop-shadow(0 0 18px rgba(96,165,250,0.70)); }
+          50%  { color: #f87171; filter: drop-shadow(0 0 18px rgba(248,113,113,0.70)); }
+          75%  { color: #c084fc; filter: drop-shadow(0 0 18px rgba(192,132,252,0.70)); }
+          100% { color: #4ade80; filter: drop-shadow(0 0 18px rgba(74,222,128,0.70)); }
         }
 
-        /* ── Entrance animations ── */
-        @keyframes hp-logo-in   { from{opacity:0;transform:translateY(-12px) scale(0.9)} to{opacity:1;transform:translateY(0) scale(1)} }
-        @keyframes hp-title-in  { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes hp-tag-in    { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes hp-form-in   { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes hp-divider-in{ from{transform:scaleX(0);opacity:0} to{transform:scaleX(1);opacity:1} }
-        @keyframes hp-btn-shimmer{ 0%{transform:translateX(-130%) skewX(-14deg);opacity:0} 12%{opacity:1} 88%{opacity:1} 100%{transform:translateX(270%) skewX(-14deg);opacity:0} }
-
-        /* ── Tier dots ── */
-        @keyframes hp-tier-dot-0 { 0%,100%{opacity:0.40;transform:scale(1)} 50%{opacity:0.90;transform:scale(1.25)} }
-        @keyframes hp-tier-dot-1 { 0%,100%{opacity:0.40;transform:scale(1)} 50%{opacity:0.90;transform:scale(1.25)} }
-        @keyframes hp-tier-dot-2 { 0%,100%{opacity:0.40;transform:scale(1)} 50%{opacity:0.90;transform:scale(1.25)} }
-        @keyframes hp-tier-dot-3 { 0%,100%{opacity:0.40;transform:scale(1)} 50%{opacity:0.90;transform:scale(1.25)} }
-
-        /* ── Guide link ── */
+        @keyframes hp-logo-in  { from{opacity:0;transform:translateY(-14px) scale(0.88)} to{opacity:1;transform:translateY(0) scale(1)} }
+        @keyframes hp-title-in { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes hp-form-in  { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes hp-div-in   { from{transform:scaleX(0);opacity:0} to{transform:scaleX(1);opacity:1} }
+        @keyframes hp-shimmer  { 0%{transform:translateX(-130%) skewX(-14deg);opacity:0} 12%{opacity:1} 88%{opacity:1} 100%{transform:translateX(270%) skewX(-14deg);opacity:0} }
         @keyframes hp-guide-in { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+
+        @keyframes hp-dot { 0%,100%{opacity:0.40;transform:scale(1)} 50%{opacity:1;transform:scale(1.30)} }
 
         .hp-orb-1 { animation: hp-orb-1 10s ease-in-out infinite; }
         .hp-orb-2 { animation: hp-orb-2 13s ease-in-out infinite; }
         .hp-orb-3 { animation: hp-orb-3 11s ease-in-out infinite; }
         .hp-orb-4 { animation: hp-orb-4 14s ease-in-out infinite; }
 
-        .hp-logo-cycle  { animation: hp-logo-cycle 6s ease-in-out infinite; }
-        .hp-logo-in     { animation: hp-logo-in    0.55s cubic-bezier(0.22,1,0.36,1) 0.08s both; }
-        .hp-title-in    { animation: hp-title-in   0.55s cubic-bezier(0.22,1,0.36,1) 0.22s both; }
-        .hp-tag-in      { animation: hp-tag-in     0.55s cubic-bezier(0.22,1,0.36,1) 0.36s both; }
-        .hp-form-in     { animation: hp-form-in    0.50s cubic-bezier(0.22,1,0.36,1) 0.50s both; }
-        .hp-divider-in  { animation: hp-divider-in 0.65s cubic-bezier(0.22,1,0.36,1) 0.16s both; transform-origin: center; }
-        .hp-btn-shimmer { animation: hp-btn-shimmer 1.6s ease-in-out 0.2s both; }
-        .hp-guide-in    { animation: hp-guide-in   0.50s cubic-bezier(0.22,1,0.36,1) 0.62s both; }
+        .hp-logo-in    { animation: hp-logo-in    0.60s cubic-bezier(0.22,1,0.36,1) 0.06s both; }
+        .hp-logo-cycle { animation: hp-logo-cycle 7s   ease-in-out infinite; }
+        .hp-t1         { animation: hp-title-in   0.55s cubic-bezier(0.22,1,0.36,1) 0.20s both; }
+        .hp-t2         { animation: hp-title-in   0.55s cubic-bezier(0.22,1,0.36,1) 0.30s both; }
+        .hp-t3         { animation: hp-title-in   0.55s cubic-bezier(0.22,1,0.36,1) 0.40s both; }
+        .hp-form       { animation: hp-form-in    0.50s cubic-bezier(0.22,1,0.36,1) 0.52s both; }
+        .hp-div        { animation: hp-div-in     0.65s cubic-bezier(0.22,1,0.36,1) 0.14s both; transform-origin:center; }
+        .hp-shimmer    { animation: hp-shimmer    2.8s  ease-in-out infinite; }
+        .hp-guide      { animation: hp-guide-in   0.50s cubic-bezier(0.22,1,0.36,1) 0.64s both; }
 
-        .hp-tier-dot-0 { animation: hp-tier-dot-0 3.2s ease-in-out 0.0s infinite; }
-        .hp-tier-dot-1 { animation: hp-tier-dot-1 3.2s ease-in-out 0.5s infinite; }
-        .hp-tier-dot-2 { animation: hp-tier-dot-2 3.2s ease-in-out 1.0s infinite; }
-        .hp-tier-dot-3 { animation: hp-tier-dot-3 3.2s ease-in-out 1.5s infinite; }
+        .hp-dot-0 { animation: hp-dot 3.0s ease-in-out 0.0s infinite; }
+        .hp-dot-1 { animation: hp-dot 3.0s ease-in-out 0.5s infinite; }
+        .hp-dot-2 { animation: hp-dot 3.0s ease-in-out 1.0s infinite; }
+        .hp-dot-3 { animation: hp-dot 3.0s ease-in-out 1.5s infinite; }
 
-        .hp-serif { font-family: 'Cormorant Garamond', Georgia, serif; }
-        .hp-sans  { font-family: 'DM Sans', system-ui, sans-serif; }
-        .hp-mono  { font-family: 'Geist Mono', ui-monospace, monospace; }
+        .hp-cinzel  { font-family: 'Cinzel', serif; }
+        .hp-serif   { font-family: 'Cormorant Garamond', Georgia, serif; }
+        .hp-sans    { font-family: 'DM Sans', system-ui, sans-serif; }
+        .hp-mono    { font-family: 'Geist Mono', ui-monospace, monospace; }
 
         .hp-guide-link {
-          color: var(--th-text-4);
-          text-decoration: none;
+          color: var(--th-text-4); text-decoration: none;
           font-family: 'DM Sans', system-ui, sans-serif;
-          font-size: 0.70rem;
-          font-weight: 400;
-          letter-spacing: 0.04em;
-          display: inline-flex;
-          align-items: center;
-          gap: 5px;
+          font-size: 0.70rem; font-weight: 400; letter-spacing: 0.04em;
+          display: inline-flex; align-items: center; gap: 5px;
           transition: color 0.2s ease;
         }
         .hp-guide-link:hover { color: var(--th-text-3); }
       `}</style>
 
-      <div
-        className="hp-sans"
-        style={{
-          minHeight:      '100dvh',
-          background:     'var(--th-bg)',
-          position:       'relative',
-          overflow:       'hidden',
-          display:        'flex',
-          flexDirection:  'column',
-          alignItems:     'center',
-          justifyContent: 'center',
-          padding:        '40px 24px',
-        }}
-      >
+      <div className="hp-sans" style={{
+        minHeight: '100dvh', background: 'var(--th-bg)',
+        position: 'relative', overflow: 'hidden',
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        padding: '40px 24px',
+      }}>
 
         {/* Theme toggle */}
         <div style={{ position: 'absolute', top: 18, right: 20, zIndex: 10 }}>
           <ThemeToggle />
         </div>
 
-        {/* Background orbs — larger, brighter than before */}
+        {/* Background orbs */}
         {[
-          { cls: 'hp-orb-1', t: '-14%', l: '-12%', c: TIER_COLORS[0], op: '28' },
+          { cls: 'hp-orb-1', t: '-14%', l: '-12%', c: TIER_COLORS[0], op: '2a' },
           { cls: 'hp-orb-2', t: '-10%', r: '-14%', c: TIER_COLORS[1], op: '22' },
           { cls: 'hp-orb-3', b: '-12%', l: '-10%', c: TIER_COLORS[2], op: '20' },
-          { cls: 'hp-orb-4', b: '-10%', r: '-12%', c: TIER_COLORS[3], op: '18' },
+          { cls: 'hp-orb-4', b: '-10%', r: '-12%', c: TIER_COLORS[3], op: '1e' },
         ].map(({ cls, t, l, r, b, c, op }, i) => (
-          <div
-            key={i} className={cls}
-            style={{
-              position: 'absolute', top: t, left: l, right: r, bottom: b,
-              width: '56vw', height: '56vw', maxWidth: 360, maxHeight: 360,
-              borderRadius: '50%',
-              background: `radial-gradient(circle, ${c}${op} 0%, transparent 68%)`,
-              pointerEvents: 'none',
-            }}
-          />
+          <div key={i} className={cls} style={{
+            position: 'absolute', top: t, left: l, right: r, bottom: b,
+            width: '58vw', height: '58vw', maxWidth: 380, maxHeight: 380,
+            borderRadius: '50%',
+            background: `radial-gradient(circle, ${c}${op} 0%, transparent 68%)`,
+            pointerEvents: 'none',
+          }} />
         ))}
 
         {/* Noise texture */}
@@ -372,140 +335,92 @@ export default function HomePage() {
 
         {/* Content */}
         <div style={{
-          position:      'relative',
-          zIndex:        1,
-          width:         '100%',
-          maxWidth:      360,
-          display:       'flex',
-          flexDirection: 'column',
-          alignItems:    'center',
+          position: 'relative', zIndex: 1,
+          width: '100%', maxWidth: 380,
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
         }}>
 
-          {/* ── Logo — cycles through all four tier colors ── */}
-          <div className="hp-logo-in hp-logo-cycle" style={{ marginBottom: 24 }}>
-            <Room13Logo size={52} />
+          {/* ── Logo ── */}
+          <div className="hp-logo-in hp-logo-cycle" style={{ marginBottom: 20 }}>
+            <Room13Logo width={180} height={82} />
           </div>
 
-          {/* ── Game name: legible, professional serif ── */}
-          <div className="hp-title-in" style={{ textAlign: 'center', marginBottom: 4 }}>
-            <h1
-              className="hp-serif"
-              style={{
-                color:         'var(--th-text-1)',
-                fontSize:      '2.6rem',
-                fontWeight:    600,
-                fontStyle:     'normal',
-                letterSpacing: '0.06em',
-                lineHeight:    1,
-                margin:        0,
-                textTransform: 'lowercase',
-              }}
-            >
-              room 13
+          {/* ── Game name ── */}
+          <div className="hp-t1" style={{ textAlign: 'center', marginBottom: 4 }}>
+            <h1 className="hp-cinzel" style={{
+              color:         'var(--th-text-1)',
+              fontSize:      '2.4rem',
+              fontWeight:    600,
+              letterSpacing: '0.34em',
+              textTransform: 'uppercase',
+              lineHeight:    1,
+              margin:        0,
+            }}>
+              Room 13
             </h1>
           </div>
 
           {/* ── Company byline ── */}
-          <div className="hp-title-in" style={{ marginBottom: 22 }}>
-            <span
-              className="hp-mono"
-              style={{
-                color:         'var(--th-text-4)',
-                fontSize:      '0.52rem',
-                fontWeight:    400,
-                letterSpacing: '0.20em',
-                textTransform: 'lowercase',
-              }}
-            >
+          <div className="hp-t1" style={{ marginBottom: 24 }}>
+            <span className="hp-mono" style={{
+              color: 'var(--th-text-4)', fontSize: '0.50rem',
+              fontWeight: 400, letterSpacing: '0.20em', textTransform: 'lowercase',
+            }}>
               by abyssprotocol
             </span>
           </div>
 
           {/* ── Tier dot divider ── */}
-          <div
-            className="hp-divider-in"
-            style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28, width: '100%' }}
-          >
+          <div className="hp-div" style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            marginBottom: 26, width: '100%',
+          }}>
             <div style={{ flex: 1, height: 1, background: 'linear-gradient(to right, transparent, var(--th-border-2))' }} />
             {TIER_COLORS.map((c, i) => (
-              <div
-                key={c}
-                className={`hp-tier-dot-${i}`}
-                style={{
-                  width:        6, height: 6,
-                  borderRadius: '50%',
-                  background:   c,
-                  boxShadow:    `0 0 8px ${c}, 0 0 16px ${c}55`,
-                }}
-              />
+              <div key={c} className={`hp-dot-${i}`} style={{
+                width: 6, height: 6, borderRadius: '50%',
+                background: c,
+                boxShadow: `0 0 8px ${c}, 0 0 18px ${c}55`,
+              }} />
             ))}
             <div style={{ flex: 1, height: 1, background: 'linear-gradient(to left, transparent, var(--th-border-2))' }} />
           </div>
 
-          {/* ── Primary tagline: cursive, alluring ── */}
-          <div className="hp-tag-in" style={{ textAlign: 'center', marginBottom: 14 }}>
-            <p
-              className="hp-serif"
-              style={{
-                color:      'var(--th-text-1)',
-                fontSize:   '1.55rem',
-                fontWeight: 500,
-                fontStyle:  'italic',
-                lineHeight: 1.3,
-                margin:     0,
-              }}
-            >
-              Two players. One deck.
-              <br />
-              No safe draws.
+          {/* ── Primary tagline ── */}
+          <div className="hp-t2" style={{ textAlign: 'center', marginBottom: 10 }}>
+            <p className="hp-serif" style={{
+              color: 'var(--th-text-1)', fontSize: '1.50rem',
+              fontWeight: 500, fontStyle: 'italic', lineHeight: 1.3, margin: 0,
+            }}>
+              Every card a different world.
             </p>
           </div>
 
-          {/* ── Description: cursive, visceral ── */}
-          <div className="hp-tag-in" style={{ textAlign: 'center', marginBottom: 10 }}>
-            <p
-              className="hp-serif"
-              style={{
-                color:      'var(--th-text-2)',
-                fontSize:   '0.98rem',
-                fontWeight: 400,
-                fontStyle:  'italic',
-                lineHeight: 1.72,
-                margin:     0,
-                maxWidth:   300,
-              }}
-            >
-              Questions start light. They don&apos;t stay that way.
-              Draw, reveal, respond — then watch what opens up between you.
+          {/* ── Sub ── */}
+          <div className="hp-t3" style={{ textAlign: 'center', marginBottom: 10 }}>
+            <p className="hp-serif" style={{
+              color: 'var(--th-text-3)', fontSize: '0.92rem',
+              fontWeight: 300, fontStyle: 'italic', lineHeight: 1.6,
+              margin: 0,
+            }}>
+              Two players. Blind draws. No map.
             </p>
           </div>
 
           {/* ── Tier intensity row ── */}
-          <div
-            className="hp-tag-in"
-            style={{
-              display:      'flex',
-              alignItems:   'center',
-              gap:           6,
-              marginBottom: 36,
-              marginTop:     8,
-            }}
-          >
+          <div className="hp-t3" style={{
+            display: 'flex', alignItems: 'center',
+            gap: 6, marginBottom: 36, marginTop: 8,
+          }}>
             {(['Light', 'Medium', 'Deep', 'Spicy'] as const).map((label, i) => (
               <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                 {i > 0 && (
                   <span style={{ color: 'var(--th-text-4)', fontSize: '0.55rem' }}>·</span>
                 )}
-                <span
-                  className="hp-serif"
-                  style={{
-                    color:      TIER_COLORS[i],
-                    fontSize:   '0.72rem',
-                    fontStyle:  'italic',
-                    fontWeight: 400,
-                    opacity:    0.80,
-                  }}
-                >
+                <span className="hp-serif" style={{
+                  color: TIER_COLORS[i], fontSize: '0.72rem',
+                  fontStyle: 'italic', fontWeight: 400, opacity: 0.80,
+                }}>
                   {label}
                 </span>
               </div>
@@ -513,14 +428,10 @@ export default function HomePage() {
           </div>
 
           {/* ── Form ── */}
-          <div className="hp-form-in" style={{ width: '100%' }}>
+          <div className="hp-form" style={{ width: '100%' }}>
 
             {resume.status === 'found' && (
-              <ResumeBanner
-                resume={resume}
-                onResume={handleResume}
-                onDismiss={handleDismiss}
-              />
+              <ResumeBanner resume={resume} onResume={handleResume} onDismiss={handleDismiss} />
             )}
 
             <div style={{ position: 'relative', marginBottom: 12 }}>
@@ -532,20 +443,14 @@ export default function HomePage() {
                 maxLength={32}
                 autoFocus
                 style={{
-                  width:         '100%',
-                  height:        54,
-                  borderRadius:  16,
-                  background:    'var(--th-input-bg)',
-                  border:        '1px solid var(--th-input-border)',
-                  color:         'var(--th-fg)',
-                  fontSize:      '0.95rem',
-                  fontWeight:    400,
-                  padding:       '0 18px',
-                  outline:       'none',
-                  fontFamily:    "'DM Sans', system-ui, sans-serif",
-                  transition:    'border-color 0.2s ease',
-                  letterSpacing: '0.01em',
-                  boxSizing:     'border-box',
+                  width: '100%', height: 54, borderRadius: 16,
+                  background: 'var(--th-input-bg)',
+                  border: '1px solid var(--th-input-border)',
+                  color: 'var(--th-fg)', fontSize: '0.95rem', fontWeight: 400,
+                  padding: '0 18px', outline: 'none',
+                  fontFamily: "'DM Sans',system-ui,sans-serif",
+                  transition: 'border-color 0.2s ease', letterSpacing: '0.01em',
+                  boxSizing: 'border-box',
                 }}
                 onFocus={e => (e.target.style.borderColor = 'var(--th-border-2)')}
                 onBlur={e  => (e.target.style.borderColor = 'var(--th-input-border)')}
@@ -553,11 +458,7 @@ export default function HomePage() {
             </div>
 
             {error && (
-              <p style={{
-                color: '#ef4444', fontSize: '0.75rem',
-                textAlign: 'center', marginBottom: 10,
-                fontFamily: "'DM Sans', system-ui, sans-serif",
-              }}>
+              <p style={{ color: '#ef4444', fontSize: '0.75rem', textAlign: 'center', marginBottom: 10, fontFamily: "'DM Sans',system-ui,sans-serif" }}>
                 {error}
               </p>
             )}
@@ -566,40 +467,31 @@ export default function HomePage() {
               disabled={!name.trim() || loading}
               onClick={handleCreate}
               style={{
-                position:      'relative',
-                width:         '100%',
-                height:        54,
-                borderRadius:  16,
-                background:    name.trim() ? 'var(--th-surface)' : 'var(--th-bg-alt)',
-                border:        name.trim() ? '1px solid var(--th-border-2)' : '1px solid var(--th-border)',
-                color:         name.trim() ? 'var(--th-text-1)' : 'var(--th-text-4)',
-                fontSize:      '1.05rem',
-                fontWeight:    500,
-                fontStyle:     'italic',
+                position: 'relative', width: '100%', height: 54, borderRadius: 16,
+                background: name.trim() ? 'var(--th-surface)' : 'var(--th-bg-alt)',
+                border: name.trim() ? '1px solid var(--th-border-2)' : '1px solid var(--th-border)',
+                color: name.trim() ? 'var(--th-text-1)' : 'var(--th-text-4)',
+                fontSize: '1.05rem', fontWeight: 400, fontStyle: 'italic',
                 letterSpacing: '0.04em',
-                cursor:        name.trim() && !loading ? 'pointer' : 'default',
-                overflow:      'hidden',
-                transition:    'all 0.25s ease',
-                fontFamily:    "'Cormorant Garamond', Georgia, serif",
+                cursor: name.trim() && !loading ? 'pointer' : 'default',
+                overflow: 'hidden',
+                transition: 'all 0.25s ease',
+                fontFamily: "'Cormorant Garamond',Georgia,serif",
               }}
             >
               {name.trim() && !loading && (
-                <div
-                  className="hp-btn-shimmer"
-                  style={{
-                    position:   'absolute', top: 0, bottom: 0,
-                    width:      '35%',
-                    background: 'linear-gradient(90deg, transparent, var(--th-border-2), transparent)',
-                    pointerEvents: 'none',
-                  }}
-                />
+                <div className="hp-shimmer" style={{
+                  position: 'absolute', top: 0, bottom: 0, width: '35%',
+                  background: 'linear-gradient(90deg, transparent, var(--th-border-2), transparent)',
+                  pointerEvents: 'none',
+                }} />
               )}
               {loading ? 'entering the room...' : 'enter'}
             </button>
           </div>
 
-          {/* ── How to play link ── */}
-          <div className="hp-guide-in" style={{ marginTop: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {/* ── How to play ── */}
+          <div className="hp-guide" style={{ marginTop: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Link href="/how-to-play" className="hp-guide-link">
               <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
                 <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.1"/>
@@ -610,46 +502,23 @@ export default function HomePage() {
             </Link>
           </div>
 
-          {/* ── Sub-copy ── */}
-          <p
-            className="hp-serif"
-            style={{
-              marginTop:     18,
-              color:         'var(--th-text-4)',
-              fontSize:      '0.78rem',
-              fontStyle:     'italic',
-              fontWeight:    300,
-              textAlign:     'center',
-              letterSpacing: '0.02em',
-              lineHeight:    1.7,
-            }}
-          >
+          {/* ── Footer copy ── */}
+          <p className="hp-serif" style={{
+            marginTop: 18, color: 'var(--th-text-4)', fontSize: '0.76rem',
+            fontStyle: 'italic', fontWeight: 300, textAlign: 'center',
+            letterSpacing: '0.02em', lineHeight: 1.7,
+          }}>
             Share one link. The room wakes when they arrive.
           </p>
 
-          {/* ── Footer watermark ── */}
+          {/* ── Watermark ── */}
           <div style={{
-            position:      'absolute',
-            bottom:        -80,
-            left:          0, right: 0,
-            display:       'flex',
-            justifyContent:'center',
-            alignItems:    'center',
-            gap:           5,
-            opacity:       0.12,
-            userSelect:    'none',
-            pointerEvents: 'none',
+            position: 'absolute', bottom: -80, left: 0, right: 0,
+            display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6,
+            opacity: 0.10, userSelect: 'none', pointerEvents: 'none',
           }}>
-            <Room13Logo size={10} />
-            <span
-              className="hp-mono"
-              style={{
-                color:         'var(--th-brand)',
-                fontSize:      '0.55rem',
-                letterSpacing: '0.18em',
-                textTransform: 'lowercase',
-              }}
-            >
+            <Room13Logo width={26} height={12} />
+            <span className="hp-mono" style={{ color: 'var(--th-brand)', fontSize: '0.52rem', letterSpacing: '0.18em', textTransform: 'lowercase' }}>
               room 13
             </span>
           </div>

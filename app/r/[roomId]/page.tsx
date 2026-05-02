@@ -21,19 +21,19 @@ import HowToPlayPage      from '@/app/how-to-play/page'
 import { useState }       from 'react'
 
 // ---------------------------------------------------------------------------
-// localStorage key — set once per browser after dismissing the HTP overlay.
-// Both host and guest see it on first visit to any room URL.
+// sessionStorage — resets per browser tab, so every new tab (including P2
+// opening a fresh link) always sees HTP. Refreshing the same tab skips it.
 // ---------------------------------------------------------------------------
 
 const HTP_SEEN_KEY = 'f9q-htp-seen'
 
 function hasSeenHTP(): boolean {
   if (typeof window === 'undefined') return false
-  try { return !!localStorage.getItem(HTP_SEEN_KEY) } catch { return false }
+  try { return !!sessionStorage.getItem(HTP_SEEN_KEY) } catch { return false }
 }
 
 function markHTPSeen(): void {
-  try { localStorage.setItem(HTP_SEEN_KEY, '1') } catch { /* private browsing */ }
+  try { sessionStorage.setItem(HTP_SEEN_KEY, '1') } catch { /* private browsing */ }
 }
 
 // ---------------------------------------------------------------------------
@@ -44,9 +44,9 @@ function LoadingSpinner() {
   return (
     <>
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
-      <div style={{ minHeight:'100dvh', background:'var(--th-bg)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:20 }}>
-        <div style={{ width:28, height:28, borderRadius:'50%', border:'2px solid var(--th-border-2)', borderTopColor:'var(--th-text-3)', animation:'spin 0.8s linear infinite' }}/>
-        <BrandWatermark/>
+      <div style={{ minHeight: '100dvh', background: 'var(--th-bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
+        <div style={{ width: 28, height: 28, borderRadius: '50%', border: '2px solid var(--th-border-2)', borderTopColor: 'var(--th-text-3)', animation: 'spin 0.8s linear infinite' }} />
+        <BrandWatermark />
       </div>
     </>
   )
@@ -62,8 +62,8 @@ export default function RoomPage() {
 
   const [proposeOpen, setProposeOpen] = useState(false)
 
-  // Show HTP overlay on first visit. Lazy-init reads localStorage once at
-  // mount so it never flickers: if already seen, state starts false.
+  // Lazy-init: read sessionStorage once at mount.
+  // New tab = no key = P2 sees HTP. Refresh = key exists = skipped.
   const [showHTP, setShowHTP] = useState<boolean>(() => !hasSeenHTP())
 
   function handleHTPClose() {
@@ -72,69 +72,33 @@ export default function RoomPage() {
   }
 
   const {
-    room,
-    mySlot,
-    needsJoin,
-    hasBothPlayers,
-    currentTurn,
-    cards,
-    activePick,
-    pendingProposal,
-    messages,
-    toast,
-    unreadCardIndices,
-    myPersonalUrl,
-
-    joinLoading,
-    drawLoading,
-    proposeLoading,
-    consentLoading,
-    isSendingMessage,
-
-    channelStatus,
-    otherIsTyping,
-    otherTypingIndex,
-
-    handleJoin,
-    handleDraw,
-    handleOpenCard,
-    handleCloseCard,
-    handlePropose,
-    handleConsent,
-    handleSendMessage,
-    handleTyping,
-    clearToast,
+    room, mySlot, needsJoin, hasBothPlayers, currentTurn, cards, activePick,
+    pendingProposal, messages, toast, unreadCardIndices, myPersonalUrl,
+    joinLoading, drawLoading, proposeLoading, consentLoading, isSendingMessage,
+    channelStatus, otherIsTyping, otherTypingIndex,
+    handleJoin, handleDraw, handleOpenCard, handleCloseCard,
+    handlePropose, handleConsent, handleSendMessage, handleTyping, clearToast,
   } = useRoomState(roomId)
-
-  // ── Derived ────────────────────────────────────────────────────────────────
 
   const isMyTurn   = mySlot !== null && currentTurn === mySlot
   const canPropose = !pendingProposal
 
   const shareUrl =
-    typeof window !== 'undefined'
-      ? `${window.location.origin}/r/${roomId}`
-      : ''
+    typeof window !== 'undefined' ? `${window.location.origin}/r/${roomId}` : ''
 
   const p1Name = room?.player1_name ?? 'Player 1'
   const p2Name = room?.player2_name ?? 'Player 2'
   const myName = mySlot === 1 ? p1Name : p2Name
 
-  // ── How-to-play overlay — shown first for both host and guest ──────────────
-  // Renders on top of everything, including the loading spinner, so players
-  // read the rules while the room data loads in the background.
+  // ── HTP overlay — fires first for both host and guest on every new tab ──
+  if (showHTP) return <HowToPlayPage onClose={handleHTPClose} />
 
-  if (showHTP) {
-    return <HowToPlayPage onClose={handleHTPClose} />
-  }
-
-  // ── Early exits ────────────────────────────────────────────────────────────
+  // ── Early exits ──────────────────────────────────────────────────────────
   if (!room)                           return <LoadingSpinner />
   if (needsJoin)                       return <JoinScreen onJoin={handleJoin} loading={joinLoading} />
   if (!hasBothPlayers && mySlot === 1) return <WaitingScreen shareUrl={shareUrl} />
 
-  // ── Main game UI ───────────────────────────────────────────────────────────
-
+  // ── Main game UI ─────────────────────────────────────────────────────────
   return (
     <>
       <style>{`
@@ -142,50 +106,25 @@ export default function RoomPage() {
         * { box-sizing: border-box; }
       `}</style>
 
-      <div style={{ position:'fixed', top:18, right:20, zIndex:9999 }}>
-        <ThemeToggle/>
+      <div style={{ position: 'fixed', top: 18, right: 20, zIndex: 9999 }}>
+        <ThemeToggle />
       </div>
 
-      <main style={{ minHeight:'100dvh', background:'var(--th-bg)', paddingBottom:140 }}>
-
-        <PlayerHeader
-          p1Name={p1Name}
-          p2Name={p2Name}
-          mySlot={mySlot ?? 1}
-          myPersonalUrl={myPersonalUrl}
-        />
-
-        <TurnBanner
-          currentTurn={currentTurn}
-          mySlot={mySlot ?? 1}
-          player1Name={p1Name}
-          player2Name={p2Name}
-          channelStatus={channelStatus}
-        />
+      <main style={{ minHeight: '100dvh', background: 'var(--th-bg)', paddingBottom: 140 }}>
+        <PlayerHeader p1Name={p1Name} p2Name={p2Name} mySlot={mySlot ?? 1} myPersonalUrl={myPersonalUrl} />
+        <TurnBanner currentTurn={currentTurn} mySlot={mySlot ?? 1} player1Name={p1Name} player2Name={p2Name} channelStatus={channelStatus} />
 
         {pendingProposal && pendingProposal.proposedBy !== mySlot && (
-          <ConsentBanner
-            proposal={pendingProposal}
-            onAccept={() => handleConsent(true)}
-            onDecline={() => handleConsent(false)}
-            loading={consentLoading}
-          />
+          <ConsentBanner proposal={pendingProposal} onAccept={() => handleConsent(true)} onDecline={() => handleConsent(false)} loading={consentLoading} />
         )}
+        {pendingProposal && pendingProposal.proposedBy === mySlot && <PendingNotice />}
 
-        {pendingProposal && pendingProposal.proposedBy === mySlot && (
-          <PendingNotice/>
-        )}
+        <div style={{ height: 16 }} />
 
-        <div style={{ height:16 }}/>
+        <QuestionGrid cards={cards} onOpen={handleOpenCard} unreadIndices={unreadCardIndices} />
 
-        <QuestionGrid
-          cards={cards}
-          onOpen={handleOpenCard}
-          unreadIndices={unreadCardIndices}
-        />
-
-        <div style={{ paddingBottom:8 }}>
-          <BrandWatermark/>
+        <div style={{ paddingBottom: 8 }}>
+          <BrandWatermark />
         </div>
       </main>
 
@@ -218,16 +157,13 @@ export default function RoomPage() {
 
       {proposeOpen && (
         <ProposeModal
-          onSubmit={async (text, tier) => {
-            await handlePropose(text, tier)
-            setProposeOpen(false)
-          }}
+          onSubmit={async (text, tier) => { await handlePropose(text, tier); setProposeOpen(false) }}
           onCancel={() => setProposeOpen(false)}
           loading={proposeLoading}
         />
       )}
 
-      {toast && <Toast message={toast} onDone={clearToast}/>}
+      {toast && <Toast message={toast} onDone={clearToast} />}
     </>
   )
 }
