@@ -28,7 +28,6 @@ export type PickState = {
 }
 
 export type RoomStateReturn = {
-  // ── Data ──────────────────────────────────────────────────────────────────
   room:               Room | null
   mySlot:             PlayerSlot | null
   needsJoin:          boolean
@@ -40,39 +39,32 @@ export type RoomStateReturn = {
   messages:           Message[]
   toast:              string | null
   unreadCardIndices:  number[]
-  /**
-   * The URL this player should bookmark / copy to recover their session
-   * on any device.  Host = ?h=1, P2 = ?p=2.
-   * Empty string until the slot is known (avoids SSR issues).
-   */
   myPersonalUrl:      string
 
-  // ── Loading flags ──────────────────────────────────────────────────────────
   joinLoading:        boolean
   drawLoading:        boolean
   proposeLoading:     boolean
   consentLoading:     boolean
   isSendingMessage:   boolean
 
-  // ── Realtime ───────────────────────────────────────────────────────────────
   channelStatus:      ChannelStatus
   otherIsTyping:      boolean
   otherTypingIndex:   number | null
 
-  // ── Actions ───────────────────────────────────────────────────────────────
   handleJoin:         (name: string) => Promise<void>
   handleDraw:         () => Promise<void>
   handleOpenCard:     (card: DrawnCard) => void
   handleCloseCard:    () => Promise<void>
   handlePropose:      (text: string, tier: QuestionTier) => Promise<void>
   handleConsent:      (accepted: boolean) => Promise<void>
-  handleSendMessage:  (content: string) => Promise<void>
+  handleSendMessage:  (content: string, replyToId?: string) => Promise<void>
+  handleEditMessage:  (messageId: string, content: string) => Promise<void>
   handleTyping:       () => Promise<void>
   clearToast:         () => void
 }
 
 // ---------------------------------------------------------------------------
-// URL param helpers — only run in browser, safe during SSR
+// URL param helpers
 // ---------------------------------------------------------------------------
 
 function getUrlParam(key: string): string | null {
@@ -80,17 +72,9 @@ function getUrlParam(key: string): string | null {
   try { return new URLSearchParams(window.location.search).get(key) } catch { return null }
 }
 
-/** Returns true when the host navigates to their ?h=1 URL. */
-function isHostUrl(): boolean {
-  return getUrlParam('h') === '1'
-}
+function isHostUrl(): boolean { return getUrlParam('h') === '1' }
+function isP2Url():   boolean { return getUrlParam('p') === '2' }
 
-/** Returns true when P2 navigates to their ?p=2 URL. */
-function isP2Url(): boolean {
-  return getUrlParam('p') === '2'
-}
-
-/** Build a personal recovery URL for the given slot. */
 function buildPersonalUrl(roomId: string, slot: PlayerSlot): string {
   if (typeof window === 'undefined') return ''
   const param = slot === 1 ? '?h=1' : '?p=2'
@@ -124,13 +108,11 @@ export function useRoomState(roomId: string): RoomStateReturn {
   const [otherTypingIndex,  setOtherTypingIndex]  = useState<number | null>(null)
   const [unreadCardIndices, setUnreadCardIndices] = useState<number[]>([])
 
-  // myPersonalUrl is pure derived state — no setState+useEffect needed.
   const myPersonalUrl = useMemo(
     () => (mySlot !== null ? buildPersonalUrl(roomId, mySlot) : ''),
     [mySlot, roomId],
   )
 
-  // Stable refs
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const roomRef          = useRef<Room | null>(null)
   const mySlotRef        = useRef<PlayerSlot | null>(null)
@@ -227,13 +209,15 @@ export function useRoomState(roomId: string): RoomStateReturn {
           setMessages(prev => [
             ...prev,
             {
-              id:             event.messageId,
-              room_id:        roomId,
-              question_index: event.questionIndex,
-              player:         event.player,
-              player_name:    event.playerName,
-              content:        event.content,
-              created_at:     event.createdAt,
+              id:                   event.messageId,
+              room_id:              roomId,
+              question_index:       event.questionIndex,
+              player:               event.player,
+              player_name:          event.playerName,
+              content:              event.content,
+              created_at:           event.createdAt,
+              reply_to_message_id:  event.reply_to_message_id ?? null,
+              edited_at:            null,
             },
           ])
         } else {
@@ -244,6 +228,16 @@ export function useRoomState(roomId: string): RoomStateReturn {
           )
           setToast('New message on a card')
         }
+      }
+
+      if (event.type === 'MESSAGE_EDITED') {
+        setMessages(prev =>
+          prev.map(m =>
+            m.id === event.messageId
+              ? { ...m, content: event.content, edited_at: event.editedAt }
+              : m,
+          ),
+        )
       }
 
       if (event.type === 'TYPING') {
@@ -323,18 +317,6 @@ export function useRoomState(roomId: string): RoomStateReturn {
         setCards(reconstructed)
       }
 
-      // ── Slot resolution ────────────────────────────────────────────────────
-      //
-      // Priority order (first match wins):
-      //   1. localStorage/sessionStorage has explicit slot → trust it
-      //   2. ?h=1 in URL → host (slot 1), re-seed localStorage
-      //   3. ?p=2 in URL → P2 (slot 2), re-seed localStorage
-      //   4. No signal, room has no P2 → show join screen
-      //   5. No signal, room is full → assume returning P2 (fallback)
-      //
-      // This means a player can move to any device by navigating to their
-      // personal URL (?h=1 or ?p=2) and the session resumes correctly.
-
       const slotKey = `f9q-slot-${roomId}`
       let stored: string | null = null
       try { stored = localStorage.getItem(slotKey) } catch { /* private browsing */ }
@@ -344,7 +326,6 @@ export function useRoomState(roomId: string): RoomStateReturn {
 
       const resolveSlot = (slot: PlayerSlot) => {
         setMySlot(slot)
-        // Re-seed storage so subsequent same-device loads don't need the param.
         try { localStorage.setItem(slotKey, String(slot)) } catch { /* ignore */ }
       }
 
@@ -357,10 +338,8 @@ export function useRoomState(roomId: string): RoomStateReturn {
       } else if (isP2Url()) {
         resolveSlot(2)
       } else if (!r.player2_name) {
-        // Room empty, no identity signal → new visitor is P2 joining.
         setNeedsJoin(true)
       } else {
-        // Room full, no identity signal → assume returning P2.
         resolveSlot(2)
       }
     }
@@ -386,15 +365,9 @@ export function useRoomState(roomId: string): RoomStateReturn {
 
     const data = await res.json()
 
-    // Store slot 2 identity.
     try { localStorage.setItem(`f9q-slot-${roomId}`, '2') } catch { /* ignore */ }
     try { sessionStorage.setItem(`f9q-slot-${roomId}`, '2') } catch { /* ignore */ }
-
-    // Encode P2 identity into the URL so this tab and any bookmark of it
-    // recovers slot 2 on any device without needing localStorage.
-    try {
-      window.history.replaceState(null, '', `/r/${roomId}?p=2`)
-    } catch { /* ignore — non-critical */ }
+    try { window.history.replaceState(null, '', `/r/${roomId}?p=2`) } catch { /* ignore */ }
 
     setMySlot(2)
     setNeedsJoin(false)
@@ -425,12 +398,10 @@ export function useRoomState(roomId: string): RoomStateReturn {
       return
     }
 
-    const { questionIndex, questionText, tier, isCustom, nextTurn } =
-      await res.json()
+    const { questionIndex, questionText, tier, isCustom, nextTurn } = await res.json()
 
     const r           = roomRef.current!
-    const drawnByName =
-      mySlot === 1 ? r.player1_name : (r.player2_name ?? 'Player 2')
+    const drawnByName = mySlot === 1 ? r.player1_name : (r.player2_name ?? 'Player 2')
 
     setCurrentTurn(nextTurn)
     setCards(prev => [
@@ -446,23 +417,9 @@ export function useRoomState(roomId: string): RoomStateReturn {
       },
     ])
     setMessages([])
-    setActivePick({
-      questionIndex,
-      questionText,
-      tier,
-      isCustom,
-      drawnByName,
-      isMyDraw: true,
-    })
+    setActivePick({ questionIndex, questionText, tier, isCustom, drawnByName, isMyDraw: true })
 
-    await sendEvent({
-      type: 'QUESTION_DRAWN',
-      player: mySlot,
-      questionIndex,
-      questionText,
-      tier,
-      isCustom,
-    })
+    await sendEvent({ type: 'QUESTION_DRAWN', player: mySlot, questionIndex, questionText, tier, isCustom })
     await sendEvent({ type: 'TURN_ADVANCED', nextTurn })
   }
 
@@ -534,21 +491,13 @@ export function useRoomState(roomId: string): RoomStateReturn {
 
     if (accepted) {
       setToast('Question added to the pool')
-      await sendEvent({
-        type:          'QUESTION_ACCEPTED',
-        questionIndex: data.questionIndex,
-        text:          data.questionText,
-        tier:          data.tier,
-      })
+      await sendEvent({ type: 'QUESTION_ACCEPTED', questionIndex: data.questionIndex, text: data.questionText, tier: data.tier })
     } else {
-      await sendEvent({
-        type:       'QUESTION_DECLINED',
-        proposedBy: pendingProposal!.proposedBy,
-      })
+      await sendEvent({ type: 'QUESTION_DECLINED', proposedBy: pendingProposal!.proposedBy })
     }
   }
 
-  async function handleSendMessage(content: string) {
+  async function handleSendMessage(content: string, replyToId?: string) {
     if (!mySlot || !activePick) return
 
     const r          = roomRef.current
@@ -559,13 +508,15 @@ export function useRoomState(roomId: string): RoomStateReturn {
 
     const optimisticId  = `optimistic-${Date.now()}`
     const optimisticMsg: Message = {
-      id:             optimisticId,
-      room_id:        roomId,
-      question_index: activePick.questionIndex,
-      player:         mySlot,
-      player_name:    playerName,
+      id:                  optimisticId,
+      room_id:             roomId,
+      question_index:      activePick.questionIndex,
+      player:              mySlot,
+      player_name:         playerName,
       content,
-      created_at:     new Date().toISOString(),
+      created_at:          new Date().toISOString(),
+      reply_to_message_id: replyToId ?? null,
+      edited_at:           null,
     }
 
     setMessages(prev => [...prev, optimisticMsg])
@@ -576,10 +527,11 @@ export function useRoomState(roomId: string): RoomStateReturn {
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({
         roomId,
-        questionIndex: activePick.questionIndex,
-        player:        mySlot,
+        questionIndex:    activePick.questionIndex,
+        player:           mySlot,
         playerName,
         content,
+        replyToMessageId: replyToId,
       }),
     })
 
@@ -599,61 +551,72 @@ export function useRoomState(roomId: string): RoomStateReturn {
     )
 
     await sendEvent({
-      type:          'MESSAGE_SENT',
-      questionIndex: activePick.questionIndex,
-      player:        mySlot,
+      type:                'MESSAGE_SENT',
+      questionIndex:       activePick.questionIndex,
+      player:              mySlot,
       playerName,
       content,
       messageId,
       createdAt,
+      reply_to_message_id: replyToId ?? null,
     })
+  }
+
+  async function handleEditMessage(messageId: string, content: string) {
+    if (!mySlot) return
+
+    // Store original for rollback
+    const original = messages.find(m => m.id === messageId)
+
+    // Optimistic update
+    setMessages(prev =>
+      prev.map(m =>
+        m.id === messageId ? { ...m, content, edited_at: new Date().toISOString() } : m,
+      ),
+    )
+
+    const res = await fetch('/api/messages', {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ messageId, player: mySlot, content }),
+    })
+
+    if (!res.ok) {
+      // Rollback optimistic update
+      if (original) {
+        setMessages(prev =>
+          prev.map(m => (m.id === messageId ? original : m)),
+        )
+      }
+      setToast('Could not save edit.')
+      return
+    }
+
+    const { editedAt } = await res.json()
+
+    setMessages(prev =>
+      prev.map(m =>
+        m.id === messageId ? { ...m, content, edited_at: editedAt } : m,
+      ),
+    )
+
+    await sendEvent({ type: 'MESSAGE_EDITED', messageId, content, editedAt })
   }
 
   async function handleTyping() {
     if (!mySlot || !activePick) return
-    await sendEvent({
-      type:          'TYPING',
-      questionIndex: activePick.questionIndex,
-      player:        mySlot,
-    })
+    await sendEvent({ type: 'TYPING', questionIndex: activePick.questionIndex, player: mySlot })
   }
 
   function clearToast() { setToast(null) }
 
-  // ── Return ─────────────────────────────────────────────────────────────────
-
   return {
-    room,
-    mySlot,
-    needsJoin,
-    hasBothPlayers,
-    currentTurn,
-    cards,
-    activePick,
-    pendingProposal,
-    messages,
-    toast,
-    unreadCardIndices,
-    myPersonalUrl,
-
-    joinLoading,
-    drawLoading,
-    proposeLoading,
-    consentLoading,
-    isSendingMessage,
-
-    channelStatus,
-    otherIsTyping,
-    otherTypingIndex,
-
-    handleJoin,
-    handleDraw,
-    handleOpenCard,
-    handleCloseCard,
-    handlePropose,
-    handleConsent,
-    handleSendMessage,
-    handleTyping,
-    clearToast,
+    room, mySlot, needsJoin, hasBothPlayers, currentTurn, cards, activePick,
+    pendingProposal, messages, toast, unreadCardIndices, myPersonalUrl,
+    joinLoading, drawLoading, proposeLoading, consentLoading, isSendingMessage,
+    channelStatus, otherIsTyping, otherTypingIndex,
+    handleJoin, handleDraw, handleOpenCard, handleCloseCard,
+    handlePropose, handleConsent, handleSendMessage, handleEditMessage,
+    handleTyping, clearToast,
   }
 }

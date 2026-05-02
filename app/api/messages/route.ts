@@ -4,8 +4,6 @@ import type { PlayerSlot } from '@/lib/supabase'
 
 // ---------------------------------------------------------------------------
 // GET /api/messages?roomId=...&questionIndex=...
-// Loads the full message thread for a specific drawn card.
-// Called by PickModal on reveal to seed the thread.
 // ---------------------------------------------------------------------------
 
 export async function GET(req: NextRequest) {
@@ -43,7 +41,7 @@ export async function GET(req: NextRequest) {
 
   const { data: messages, error: messagesError } = await supabase
     .from('room_messages')
-    .select('id, room_id, question_index, player, player_name, content, created_at')
+    .select('id, room_id, question_index, player, player_name, content, created_at, reply_to_message_id, edited_at')
     .eq('room_id', roomId)
     .eq('question_index', questionIndex)
     .order('created_at', { ascending: true })
@@ -57,22 +55,19 @@ export async function GET(req: NextRequest) {
 }
 
 // ---------------------------------------------------------------------------
-// POST /api/messages
-// Inserts a message row and returns the generated id + timestamp.
-// The caller is responsible for broadcasting MESSAGE_SENT over the channel
-// so the other player sees the message without polling.
+// POST /api/messages — insert new message
 // ---------------------------------------------------------------------------
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
 
-  const roomId      = body?.roomId as string
-  const player      = body?.player as PlayerSlot
-  const playerName  = body?.playerName?.trim() as string
-  const content     = body?.content?.trim() as string
+  const roomId        = body?.roomId as string
+  const player        = body?.player as PlayerSlot
+  const playerName    = body?.playerName?.trim() as string
+  const content       = body?.content?.trim() as string
   const questionIndex = body?.questionIndex
+  const replyToMessageId = body?.replyToMessageId as string | undefined
 
-  // Validate presence
   if (
     !roomId ||
     !playerName ||
@@ -86,7 +81,6 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Validate types
   if (!Number.isInteger(questionIndex) || questionIndex < 0) {
     return NextResponse.json({ error: 'Invalid questionIndex' }, { status: 400 })
   }
@@ -118,15 +112,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Room has expired' }, { status: 410 })
   }
 
+  const insertPayload: Record<string, unknown> = {
+    room_id: roomId,
+    question_index: questionIndex,
+    player,
+    player_name: playerName,
+    content,
+  }
+
+  if (replyToMessageId) {
+    insertPayload.reply_to_message_id = replyToMessageId
+  }
+
   const { data: message, error: insertError } = await supabase
     .from('room_messages')
-    .insert({
-      room_id: roomId,
-      question_index: questionIndex,
-      player,
-      player_name: playerName,
-      content,
-    })
+    .insert(insertPayload)
     .select('id, created_at')
     .single()
 
@@ -135,9 +135,72 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to send message' }, { status: 500 })
   }
 
-  // Caller broadcasts MESSAGE_SENT via the Realtime channel after this returns.
   return NextResponse.json({
     messageId: message.id,
     createdAt: message.created_at,
   })
+}
+
+// ---------------------------------------------------------------------------
+// PATCH /api/messages — edit an existing message (no time restriction)
+// ---------------------------------------------------------------------------
+
+export async function PATCH(req: NextRequest) {
+  const body = await req.json()
+
+  const messageId = body?.messageId as string
+  const player    = body?.player as PlayerSlot
+  const content   = body?.content?.trim() as string
+
+  if (!messageId || !player || !content) {
+    return NextResponse.json(
+      { error: 'messageId, player, and content are required' },
+      { status: 400 }
+    )
+  }
+
+  if (player !== 1 && player !== 2) {
+    return NextResponse.json({ error: 'Invalid player slot' }, { status: 400 })
+  }
+
+  if (content.length < 1 || content.length > 500) {
+    return NextResponse.json(
+      { error: 'Message must be between 1 and 500 characters' },
+      { status: 400 }
+    )
+  }
+
+  const supabase = createSupabaseServerClient()
+
+  // Verify ownership before touching the row
+  const { data: existing, error: fetchError } = await supabase
+    .from('room_messages')
+    .select('id, player')
+    .eq('id', messageId)
+    .single()
+
+  if (fetchError || !existing) {
+    return NextResponse.json({ error: 'Message not found' }, { status: 404 })
+  }
+
+  if (existing.player !== player) {
+    return NextResponse.json(
+      { error: 'You can only edit your own messages' },
+      { status: 403 }
+    )
+  }
+
+  const editedAt = new Date().toISOString()
+
+  const { error: updateError } = await supabase
+    .from('room_messages')
+    .update({ content, edited_at: editedAt })
+    .eq('id', messageId)
+
+  if (updateError) {
+    console.error('[messages/PATCH] update failed:', updateError)
+    return NextResponse.json({ error: 'Failed to update message' }, { status: 500 })
+  }
+
+  return NextResponse.json({ ok: true, editedAt })
 }

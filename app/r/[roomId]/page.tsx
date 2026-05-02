@@ -61,7 +61,8 @@ export default function RoomPage() {
     joinLoading, drawLoading, proposeLoading, consentLoading, isSendingMessage,
     channelStatus, otherIsTyping, otherTypingIndex,
     handleJoin, handleDraw, handleOpenCard, handleCloseCard,
-    handlePropose, handleConsent, handleSendMessage, handleTyping, clearToast,
+    handlePropose, handleConsent, handleSendMessage, handleEditMessage,
+    handleTyping, clearToast,
   } = useRoomState(roomId)
 
   const isMyTurn   = mySlot !== null && currentTurn === mySlot
@@ -90,12 +91,6 @@ export default function RoomPage() {
         * { box-sizing: border-box; }
       `}</style>
 
-      {/*
-        ThemeToggle is NO LONGER position:fixed top-right.
-        It is rendered inside PlayerHeader via the `themeToggle` prop slot,
-        sitting at the far right of the header row — naturally in flow,
-        never floating over player names or the copy button.
-      */}
       <main style={{ minHeight: '100dvh', background: 'var(--th-bg)', paddingBottom: 140 }}>
         <PlayerHeader
           p1Name={p1Name}
@@ -104,10 +99,21 @@ export default function RoomPage() {
           myPersonalUrl={myPersonalUrl}
           themeToggle={<ThemeToggle />}
         />
-        <TurnBanner currentTurn={currentTurn} mySlot={mySlot ?? 1} player1Name={p1Name} player2Name={p2Name} channelStatus={channelStatus} />
+        <TurnBanner
+          currentTurn={currentTurn}
+          mySlot={mySlot ?? 1}
+          player1Name={p1Name}
+          player2Name={p2Name}
+          channelStatus={channelStatus}
+        />
 
         {pendingProposal && pendingProposal.proposedBy !== mySlot && (
-          <ConsentBanner proposal={pendingProposal} onAccept={() => handleConsent(true)} onDecline={() => handleConsent(false)} loading={consentLoading} />
+          <ConsentBanner
+            proposal={pendingProposal}
+            onAccept={() => handleConsent(true)}
+            onDecline={() => handleConsent(false)}
+            loading={consentLoading}
+          />
         )}
         {pendingProposal && pendingProposal.proposedBy === mySlot && <PendingNotice />}
 
@@ -141,6 +147,7 @@ export default function RoomPage() {
           myName={myName}
           messages={messages}
           onSendMessage={handleSendMessage}
+          onEdit={handleEditMessage}
           isSendingMessage={isSendingMessage}
           onTyping={handleTyping}
           isOtherTyping={otherIsTyping && otherTypingIndex === activePick.questionIndex}

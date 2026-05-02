@@ -1,20 +1,11 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
-// ---------------------------------------------------------------------------
-// NOTE: single source of truth for all shared types.
-// API routes, hooks, and components all import from here.
-// ---------------------------------------------------------------------------
-
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   throw new Error('Missing Supabase environment variables. Check your .env.local file.')
 }
-
-// ---------------------------------------------------------------------------
-// Clients
-// ---------------------------------------------------------------------------
 
 let _browserClient: SupabaseClient | null = null
 
@@ -29,40 +20,22 @@ export function createSupabaseServerClient(): SupabaseClient {
   return createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 }
 
-// ---------------------------------------------------------------------------
-// Core types
-// ---------------------------------------------------------------------------
-
 export type PlayerSlot = 1 | 2
 
 export type QuestionTier = 'light' | 'medium' | 'deep' | 'spicy'
 
-/**
- * A question as it lives inside the room's question_pool column.
- * Static questions (snapshotted from questions.ts at room creation) have isCustom: false.
- * Questions added mid-session by either player have isCustom: true.
- */
 export type PoolQuestion = {
   text: string
   tier: QuestionTier
   isCustom: boolean
 }
 
-/**
- * A custom question waiting for the other player's consent.
- * Stored in pending_question on the room row until resolved.
- */
 export type PendingQuestion = {
   text: string
   tier: QuestionTier
   proposedBy: PlayerSlot
 }
 
-/**
- * A single message in a per-question thread.
- * Persisted in the room_messages table; broadcast via MESSAGE_SENT realtime event.
- * Scoped to (room_id, question_index) — one thread per drawn card.
- */
 export type Message = {
   id: string
   room_id: string
@@ -71,6 +44,8 @@ export type Message = {
   player_name: string
   content: string
   created_at: string
+  reply_to_message_id?: string | null
+  edited_at?: string | null
 }
 
 export type Room = {
@@ -85,11 +60,6 @@ export type Room = {
   expires_at: string
 }
 
-// ---------------------------------------------------------------------------
-// Realtime broadcast event shapes
-// Every event broadcast through the channel must match one of these.
-// ---------------------------------------------------------------------------
-
 export type RoomEvent =
   | { type: 'PLAYER_JOINED';     player: PlayerSlot; name: string }
   | { type: 'QUESTION_DRAWN';    player: PlayerSlot; questionIndex: number; questionText: string; tier: QuestionTier; isCustom: boolean }
@@ -97,47 +67,32 @@ export type RoomEvent =
   | { type: 'QUESTION_PROPOSED'; proposedBy: PlayerSlot; text: string; tier: QuestionTier }
   | { type: 'QUESTION_ACCEPTED'; questionIndex: number; text: string; tier: QuestionTier }
   | { type: 'QUESTION_DECLINED'; proposedBy: PlayerSlot }
-  /**
-   * Broadcast whenever a player sends a message in the per-question thread.
-   * The sender writes to DB first (via POST /api/messages), then broadcasts this
-   * so the other player sees the message without polling.
-   * The sender applies an optimistic local update and does not re-process this event.
-   */
   | {
       type: 'MESSAGE_SENT'
       questionIndex: number
       player: PlayerSlot
       playerName: string
       content: string
-      /** UUID from the room_messages row — lets the receiver deduplicate if needed. */
       messageId: string
-      /** ISO 8601 timestamp from the DB row. */
       createdAt: string
+      reply_to_message_id?: string | null
     }
-  /**
-   * Broadcast while a player is composing a message in the thread for a
-   * specific question. Throttled to one event per 1 500 ms on the sender side.
-   * The receiver auto-clears the indicator after 3 s without a new event.
-   */
+  | {
+      type: 'MESSAGE_EDITED'
+      messageId: string
+      content: string
+      editedAt: string
+    }
   | {
       type: 'TYPING'
       questionIndex: number
       player: PlayerSlot
     }
-  /**
-   * Broadcast when a player closes the PickModal for a specific question.
-   * Forces the other player's modal for that same question to close so
-   * both clients stay in sync.
-   */
   | {
       type: 'CARD_CLOSED'
       questionIndex: number
     }
 
-/**
- * A question card that has been drawn and exists in both clients' state.
- * Consumed by QuestionGrid (history display) and PickModal (reveal moment).
- */
 export type DrawnCard = {
   questionIndex: number
   questionText: string

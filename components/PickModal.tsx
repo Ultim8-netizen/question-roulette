@@ -73,15 +73,31 @@ function TierSymbol({ tier, color, size }: { tier:QuestionTier; color:string; si
 }
 
 type PickModalProps = {
-  questionText:string; tier:QuestionTier; isCustom:boolean; drawnByName:string; isMyDraw:boolean
-  onClose:()=>void; questionIndex:number; mySlot:PlayerSlot; myName:string
-  messages:Message[]; onSendMessage:(content:string)=>Promise<void>; isSendingMessage:boolean
-  onTyping:()=>void; isOtherTyping:boolean; draftKey:string
+  questionText:     string
+  tier:             QuestionTier
+  isCustom:         boolean
+  drawnByName:      string
+  isMyDraw:         boolean
+  onClose:          () => void
+  questionIndex:    number
+  mySlot:           PlayerSlot
+  myName:           string
+  messages:         Message[]
+  onSendMessage:    (content: string, replyToId?: string) => Promise<void>
+  onEdit:           (messageId: string, content: string) => Promise<void>
+  isSendingMessage: boolean
+  onTyping:         () => void
+  isOtherTyping:    boolean
+  draftKey:         string
 }
 
 type TapState = 'idle' | 'flipping' | 'revealed'
 
-export function PickModal({ questionText, tier, isCustom, drawnByName, isMyDraw, onClose, questionIndex:_qi, mySlot, myName, messages, onSendMessage, isSendingMessage, onTyping, isOtherTyping, draftKey }: PickModalProps) {
+export function PickModal({
+  questionText, tier, isCustom, drawnByName, isMyDraw, onClose,
+  questionIndex: _qi, mySlot, myName, messages, onSendMessage, onEdit,
+  isSendingMessage, onTyping, isOtherTyping, draftKey,
+}: PickModalProps) {
   const [tapState, setTapState] = useState<TapState>('idle')
   const { isDark }  = useTheme()
   const TIER_CONFIG = getTierConfig(isDark)
@@ -121,10 +137,11 @@ export function PickModal({ questionText, tier, isCustom, drawnByName, isMyDraw,
         .pm-no-select{-webkit-user-select:none;-moz-user-select:none;user-select:none}
       `}</style>
 
-      <div className="pm-backdrop fixed inset-0 z-50 flex items-end justify-center px-4 pb-6"
+      <div
+        className="pm-backdrop fixed inset-0 z-50 flex items-end justify-center px-4 pb-6"
         style={{ background:'var(--th-overlay)', backdropFilter:'blur(8px)', overflowY:tapState==='revealed'?'auto':'hidden', fontFamily:"'Figtree',system-ui,sans-serif" }}
-        onClick={e=>{if(tapState==='revealed'&&e.target===e.currentTarget)onClose()}}>
-
+        onClick={e=>{if(tapState==='revealed'&&e.target===e.currentTarget)onClose()}}
+      >
         <div className="pm-rise w-full" style={{ maxWidth:390 }}>
 
           {/* Attribution header */}
@@ -184,7 +201,11 @@ export function PickModal({ questionText, tier, isCustom, drawnByName, isMyDraw,
                 <div className="pm-text-in">
                   <p style={{ fontFamily:"'Syne',system-ui,sans-serif", color:conf.textLight, fontSize:'1.18rem', fontWeight:600, lineHeight:1.55, letterSpacing:'0.01em', marginBottom:0 }}>{questionText}</p>
                 </div>
-                {!isMyDraw && <p style={{ fontFamily:"'Figtree',system-ui,sans-serif", color:`${conf.primary}80`, fontSize:'0.70rem', marginTop:10, lineHeight:1.55 }}>{drawnByName} drew this card. Both of you can respond below.</p>}
+                {!isMyDraw && (
+                  <p style={{ fontFamily:"'Figtree',system-ui,sans-serif", color:`${conf.primary}80`, fontSize:'0.70rem', marginTop:10, lineHeight:1.55 }}>
+                    {drawnByName} drew this card. Both of you can respond below.
+                  </p>
+                )}
                 <div className="flex items-center justify-between mt-4 mb-0">
                   <div className="flex items-center gap-2">
                     <TierSymbol tier={tier} color={conf.primary} size={14}/>
@@ -192,18 +213,33 @@ export function PickModal({ questionText, tier, isCustom, drawnByName, isMyDraw,
                   </div>
                   {isCustom && <span style={{ fontFamily:"'Figtree',system-ui,sans-serif", color:`${conf.primary}70`, fontSize:'0.68rem' }}>custom question</span>}
                 </div>
-                <MessageThread messages={messages} mySlot={mySlot} myName={myName} onSend={onSendMessage} isSending={isSendingMessage} accentColor={conf.primary} onTyping={onTyping} isOtherTyping={isOtherTyping} draftKey={draftKey}/>
+                <MessageThread
+                  messages={messages}
+                  mySlot={mySlot}
+                  myName={myName}
+                  onSend={onSendMessage}
+                  onEdit={onEdit}
+                  isSending={isSendingMessage}
+                  accentColor={conf.primary}
+                  onTyping={onTyping}
+                  isOtherTyping={isOtherTyping}
+                  draftKey={draftKey}
+                />
               </div>
             </div>
           )}
 
           {/* Done button */}
           {tapState === 'revealed' && (
-            <button className="pm-btn-in mt-4 w-full rounded-2xl text-sm font-medium active:opacity-60"
+            <button
+              className="pm-btn-in mt-4 w-full rounded-2xl text-sm font-medium active:opacity-60"
               style={{ padding:'15px 0', background:'var(--th-surface)', border:'1px solid var(--th-border-2)', color:'var(--th-text-1)', letterSpacing:'0.06em', cursor:'pointer', fontFamily:"'Figtree',system-ui,sans-serif", fontWeight:500, transition:'background 0.2s ease' }}
               onMouseEnter={e=>((e.currentTarget as HTMLButtonElement).style.background='var(--th-surface-2)')}
               onMouseLeave={e=>((e.currentTarget as HTMLButtonElement).style.background='var(--th-surface)')}
-              onClick={onClose}>Done</button>
+              onClick={onClose}
+            >
+              Done
+            </button>
           )}
         </div>
       </div>
