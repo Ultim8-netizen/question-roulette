@@ -20,10 +20,6 @@ import { ThemeToggle }    from '@/components/ThemeToggle'
 import HowToPlayPage      from '@/app/how-to-play/page'
 import { useState }       from 'react'
 
-// ---------------------------------------------------------------------------
-// sessionStorage — resets per browser tab
-// ---------------------------------------------------------------------------
-
 const HTP_SEEN_KEY = 'f9q-htp-seen'
 
 function hasSeenHTP(): boolean {
@@ -34,10 +30,6 @@ function hasSeenHTP(): boolean {
 function markHTPSeen(): void {
   try { sessionStorage.setItem(HTP_SEEN_KEY, '1') } catch { /* private browsing */ }
 }
-
-// ---------------------------------------------------------------------------
-// Loading spinner
-// ---------------------------------------------------------------------------
 
 function LoadingSpinner() {
   return (
@@ -51,16 +43,11 @@ function LoadingSpinner() {
   )
 }
 
-// ---------------------------------------------------------------------------
-// Page
-// ---------------------------------------------------------------------------
-
 export default function RoomPage() {
   const params = useParams()
   const roomId = params.roomId as string
 
   const [proposeOpen, setProposeOpen] = useState(false)
-
   const [showHTP, setShowHTP] = useState<boolean>(() => !hasSeenHTP())
 
   function handleHTPClose() {
@@ -87,20 +74,15 @@ export default function RoomPage() {
   const p2Name = room?.player2_name ?? 'Player 2'
   const myName = mySlot === 1 ? p1Name : p2Name
 
-  // Stable draft key scoped to room + question so drafts never bleed across cards
   const draftKey = activePick
     ? `f9q-draft-${roomId}-${activePick.questionIndex}`
     : ''
 
-  // ── HTP overlay ──────────────────────────────────────────────────────────
   if (showHTP) return <HowToPlayPage onClose={handleHTPClose} />
-
-  // ── Early exits ──────────────────────────────────────────────────────────
   if (!room)                           return <LoadingSpinner />
   if (needsJoin)                       return <JoinScreen onJoin={handleJoin} loading={joinLoading} />
   if (!hasBothPlayers && mySlot === 1) return <WaitingScreen shareUrl={shareUrl} />
 
-  // ── Main game UI ─────────────────────────────────────────────────────────
   return (
     <>
       <style>{`
@@ -108,12 +90,20 @@ export default function RoomPage() {
         * { box-sizing: border-box; }
       `}</style>
 
-      <div style={{ position: 'fixed', top: 18, right: 20, zIndex: 9999 }}>
-        <ThemeToggle />
-      </div>
-
+      {/*
+        ThemeToggle is NO LONGER position:fixed top-right.
+        It is rendered inside PlayerHeader via the `themeToggle` prop slot,
+        sitting at the far right of the header row — naturally in flow,
+        never floating over player names or the copy button.
+      */}
       <main style={{ minHeight: '100dvh', background: 'var(--th-bg)', paddingBottom: 140 }}>
-        <PlayerHeader p1Name={p1Name} p2Name={p2Name} mySlot={mySlot ?? 1} myPersonalUrl={myPersonalUrl} />
+        <PlayerHeader
+          p1Name={p1Name}
+          p2Name={p2Name}
+          mySlot={mySlot ?? 1}
+          myPersonalUrl={myPersonalUrl}
+          themeToggle={<ThemeToggle />}
+        />
         <TurnBanner currentTurn={currentTurn} mySlot={mySlot ?? 1} player1Name={p1Name} player2Name={p2Name} channelStatus={channelStatus} />
 
         {pendingProposal && pendingProposal.proposedBy !== mySlot && (
