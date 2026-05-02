@@ -75,6 +75,7 @@ export default function RoomPage() {
     pendingProposal,
     messages,
     toast,
+    unreadCardIndices,
 
     joinLoading,
     drawLoading,
@@ -101,14 +102,19 @@ export default function RoomPage() {
 
   const isMyTurn   = mySlot !== null && currentTurn === mySlot
   const canPropose = !pendingProposal
-  const shareUrl   = typeof window !== 'undefined' ? window.location.href : ''
+
+  // The HOST's URL contains ?h=1 to encode their role — strip it from the
+  // share link so P2 receives a clean URL and isn't accidentally tagged as host.
+  const shareUrl =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/r/${roomId}`
+      : ''
 
   const p1Name = room?.player1_name ?? 'Player 1'
   const p2Name = room?.player2_name ?? 'Player 2'
   const myName = mySlot === 1 ? p1Name : p2Name
 
   // ── Early exits ────────────────────────────────────────────────────────────
-  // JoinScreen renders its own ThemeToggle internally.
   if (!room)                           return <LoadingSpinner />
   if (needsJoin)                       return <JoinScreen onJoin={handleJoin} loading={joinLoading} />
   if (!hasBothPlayers && mySlot === 1) return <WaitingScreen shareUrl={shareUrl} />
@@ -122,26 +128,18 @@ export default function RoomPage() {
         * { box-sizing: border-box; }
       `}</style>
 
-      {/*
-        ThemeToggle — fixed position, highest z-index in the document.
-        Rendered here (page level) rather than inside TurnBanner so it is
-        never trapped inside an animated stacking context. This single
-        instance covers both the host and player 2 game views.
-      */}
       <div style={{ position: 'fixed', top: 18, right: 20, zIndex: 9999 }}>
         <ThemeToggle />
       </div>
 
       <main style={{ minHeight: '100dvh', background: 'var(--th-bg)', paddingBottom: 140 }}>
 
-        {/* ── Nameplate header ── */}
         <PlayerHeader
           p1Name={p1Name}
           p2Name={p2Name}
           mySlot={mySlot ?? 1}
         />
 
-        {/* ── Turn banner + connection indicator ── */}
         <TurnBanner
           currentTurn={currentTurn}
           mySlot={mySlot ?? 1}
@@ -150,7 +148,6 @@ export default function RoomPage() {
           channelStatus={channelStatus}
         />
 
-        {/* ── Incoming proposal ── */}
         {pendingProposal && pendingProposal.proposedBy !== mySlot && (
           <ConsentBanner
             proposal={pendingProposal}
@@ -160,22 +157,24 @@ export default function RoomPage() {
           />
         )}
 
-        {/* ── Outgoing proposal waiting notice ── */}
         {pendingProposal && pendingProposal.proposedBy === mySlot && (
           <PendingNotice />
         )}
 
         <div style={{ height: 16 }} />
 
-        {/* ── Card grid ── */}
-        <QuestionGrid cards={cards} onOpen={handleOpenCard} />
+        {/* Pass unreadCardIndices so the grid can badge cards with new messages */}
+        <QuestionGrid
+          cards={cards}
+          onOpen={handleOpenCard}
+          unreadIndices={unreadCardIndices}
+        />
 
         <div style={{ paddingBottom: 8 }}>
           <BrandWatermark />
         </div>
       </main>
 
-      {/* ── Fixed draw button ── */}
       <DrawButton
         isMyTurn={isMyTurn && hasBothPlayers}
         isLoading={drawLoading}
@@ -184,7 +183,6 @@ export default function RoomPage() {
         onPropose={() => setProposeOpen(true)}
       />
 
-      {/* ── Card reveal modal ── */}
       {activePick && (
         <PickModal
           questionText={activePick.questionText}
@@ -206,7 +204,6 @@ export default function RoomPage() {
         />
       )}
 
-      {/* ── Propose modal ── */}
       {proposeOpen && (
         <ProposeModal
           onSubmit={async (text, tier) => {
@@ -218,7 +215,6 @@ export default function RoomPage() {
         />
       )}
 
-      {/* ── Toast ── */}
       {toast && <Toast message={toast} onDone={clearToast} />}
     </>
   )

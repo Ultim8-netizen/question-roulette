@@ -29,39 +29,55 @@ export type PickState = {
 
 export type RoomStateReturn = {
   // ── Data ──────────────────────────────────────────────────────────────────
-  room:            Room | null
-  mySlot:          PlayerSlot | null
-  needsJoin:       boolean
-  hasBothPlayers:  boolean
-  currentTurn:     PlayerSlot
-  cards:           DrawnCard[]
-  activePick:      PickState | null
-  pendingProposal: PendingQuestion | null
-  messages:        Message[]
-  toast:           string | null
+  room:               Room | null
+  mySlot:             PlayerSlot | null
+  needsJoin:          boolean
+  hasBothPlayers:     boolean
+  currentTurn:        PlayerSlot
+  cards:              DrawnCard[]
+  activePick:         PickState | null
+  pendingProposal:    PendingQuestion | null
+  messages:           Message[]
+  toast:              string | null
+  /** Indices of cards that have received new messages since they were last opened. */
+  unreadCardIndices:  number[]
 
   // ── Loading flags ──────────────────────────────────────────────────────────
-  joinLoading:     boolean
-  drawLoading:     boolean
-  proposeLoading:  boolean
-  consentLoading:  boolean
-  isSendingMessage:boolean
+  joinLoading:        boolean
+  drawLoading:        boolean
+  proposeLoading:     boolean
+  consentLoading:     boolean
+  isSendingMessage:   boolean
 
   // ── Realtime ───────────────────────────────────────────────────────────────
-  channelStatus:   ChannelStatus
-  otherIsTyping:   boolean
-  otherTypingIndex:number | null
+  channelStatus:      ChannelStatus
+  otherIsTyping:      boolean
+  otherTypingIndex:   number | null
 
   // ── Actions ───────────────────────────────────────────────────────────────
-  handleJoin:        (name: string) => Promise<void>
-  handleDraw:        () => Promise<void>
-  handleOpenCard:    (card: DrawnCard) => void
-  handleCloseCard:   () => Promise<void>
-  handlePropose:     (text: string, tier: QuestionTier) => Promise<void>
-  handleConsent:     (accepted: boolean) => Promise<void>
-  handleSendMessage: (content: string) => Promise<void>
-  handleTyping:      () => Promise<void>
-  clearToast:        () => void
+  handleJoin:         (name: string) => Promise<void>
+  handleDraw:         () => Promise<void>
+  handleOpenCard:     (card: DrawnCard) => void
+  handleCloseCard:    () => Promise<void>
+  handlePropose:      (text: string, tier: QuestionTier) => Promise<void>
+  handleConsent:      (accepted: boolean) => Promise<void>
+  handleSendMessage:  (content: string) => Promise<void>
+  handleTyping:       () => Promise<void>
+  clearToast:         () => void
+}
+
+// ---------------------------------------------------------------------------
+// Helper — read the ?h=1 query param from the current URL.
+// Only runs in the browser; returns false during SSR.
+// ---------------------------------------------------------------------------
+
+function isHostUrl(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    return new URLSearchParams(window.location.search).get('h') === '1'
+  } catch {
+    return false
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -90,14 +106,20 @@ export function useRoomState(roomId: string): RoomStateReturn {
   const [otherIsTyping,     setOtherIsTyping]     = useState(false)
   const [otherTypingIndex,  setOtherTypingIndex]  = useState<number | null>(null)
 
+  /**
+   * Card indices that have received messages while they were not the active
+   * card. Cleared when handleOpenCard is called for that index.
+   */
+  const [unreadCardIndices, setUnreadCardIndices] = useState<number[]>([])
+
   // Stable refs — avoid stale closures in callbacks without re-subscribing
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const roomRef          = useRef<Room | null>(null)
   const mySlotRef        = useRef<PlayerSlot | null>(null)
   const activePickRef    = useRef<PickState | null>(null)
 
-  useEffect(() => { roomRef.current      = room      }, [room])
-  useEffect(() => { mySlotRef.current    = mySlot    }, [mySlot])
+  useEffect(() => { roomRef.current       = room      }, [room])
+  useEffect(() => { mySlotRef.current     = mySlot    }, [mySlot])
   useEffect(() => { activePickRef.current = activePick }, [activePick])
 
   // ── Message loader ─────────────────────────────────────────────────────────
@@ -184,6 +206,7 @@ export function useRoomState(roomId: string): RoomStateReturn {
       if (event.type === 'MESSAGE_SENT') {
         const current = activePickRef.current
         if (current && event.questionIndex === current.questionIndex) {
+          // Active card — append to the live thread.
           setMessages(prev => [
             ...prev,
             {
@@ -196,6 +219,14 @@ export function useRoomState(roomId: string): RoomStateReturn {
               created_at:     event.createdAt,
             },
           ])
+        } else {
+          // Card is not currently open — mark it as having unread messages.
+          setUnreadCardIndices(prev =>
+            prev.includes(event.questionIndex)
+              ? prev
+              : [...prev, event.questionIndex],
+          )
+          setToast('New message on a card')
         }
       }
 
@@ -277,10 +308,17 @@ export function useRoomState(roomId: string): RoomStateReturn {
         setCards(reconstructed)
       }
 
-      // Resolve slot.
-      // app/page.tsx (host creation) writes to localStorage under 'f9q-slot-{roomId}'.
-      // handleJoin (player 2) writes to localStorage as well.
-      // sessionStorage is checked as a legacy fallback only.
+      // ── Slot resolution ────────────────────────────────────────────────────
+      //
+      // Priority order:
+      //   1. localStorage has a slot stored for this room → use it (most cases)
+      //   2. ?h=1 is in the URL → treat as host (slot 1), regardless of
+      //      player2_name. This covers the case where the host lost their
+      //      localStorage but bookmarked the correct host URL.
+      //   3. No slot stored, no host param, room is empty → join screen (P2)
+      //   4. No slot stored, no host param, room is full → fallback to slot 2
+      //      (P2 returning after losing their localStorage)
+
       const slotKey = `f9q-slot-${roomId}`
       let stored: string | null = null
       try { stored = localStorage.getItem(slotKey) } catch { /* private browsing */ }
@@ -288,21 +326,26 @@ export function useRoomState(roomId: string): RoomStateReturn {
         try { stored = sessionStorage.getItem(slotKey) } catch { /* ignore */ }
       }
 
+      const hostParam = isHostUrl()
+
       if (stored === '1') {
+        // Slot explicitly stored as host.
         setMySlot(1)
       } else if (stored === '2') {
+        // Slot explicitly stored as P2.
         setMySlot(2)
+      } else if (hostParam) {
+        // URL encodes host role — recover slot 1 even without localStorage.
+        // Also persist it so subsequent loads on this device don't need ?h=1.
+        setMySlot(1)
+        try { localStorage.setItem(slotKey, '1') } catch { /* ignore */ }
+      } else if (!r.player2_name) {
+        // No slot, no host param, room is empty → visitor is P2 joining.
+        setNeedsJoin(true)
       } else {
-        // No slot recorded — this client is an unrecognised visitor.
-        if (!r.player2_name) {
-          // Room still needs a second player — show the join screen.
-          setNeedsJoin(true)
-        } else {
-          // Room is full and this client has no slot recorded; treat as player 2
-          // (e.g. player 2 returning after clearing storage).
-          setMySlot(2)
-          try { localStorage.setItem(slotKey, '2') } catch { /* ignore */ }
-        }
+        // No slot, no host param, room is full → assume returning P2.
+        setMySlot(2)
+        try { localStorage.setItem(slotKey, '2') } catch { /* ignore */ }
       }
     }
 
@@ -360,7 +403,7 @@ export function useRoomState(roomId: string): RoomStateReturn {
     const { questionIndex, questionText, tier, isCustom, nextTurn } =
       await res.json()
 
-    const r          = roomRef.current!
+    const r           = roomRef.current!
     const drawnByName =
       mySlot === 1 ? r.player1_name : (r.player2_name ?? 'Player 2')
 
@@ -399,6 +442,8 @@ export function useRoomState(roomId: string): RoomStateReturn {
   }
 
   function handleOpenCard(card: DrawnCard) {
+    // Clear any unread indicator for this card before opening.
+    setUnreadCardIndices(prev => prev.filter(i => i !== card.questionIndex))
     setMessages([])
     setActivePick({
       questionIndex: card.questionIndex,
@@ -566,6 +611,7 @@ export function useRoomState(roomId: string): RoomStateReturn {
     pendingProposal,
     messages,
     toast,
+    unreadCardIndices,
 
     joinLoading,
     drawLoading,

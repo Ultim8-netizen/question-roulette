@@ -11,7 +11,7 @@ const TIER_COLORS = ['#4ade80', '#60a5fa', '#f87171', '#c084fc']
 // Keys — centralised so page.tsx and room page stay in sync
 // ---------------------------------------------------------------------------
 
-export const SLOT_KEY  = (roomId: string) => `f9q-slot-${roomId}`
+export const SLOT_KEY      = (roomId: string) => `f9q-slot-${roomId}`
 export const LAST_ROOM_KEY = 'f9q-last-room'
 
 // ---------------------------------------------------------------------------
@@ -21,15 +21,17 @@ export const LAST_ROOM_KEY = 'f9q-last-room'
 function AbyssSignil({ size = 48 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden="true">
-      <circle cx="16" cy="16" r="9" stroke="var(--th-brand)" strokeWidth="1.1" strokeDasharray="22 6" strokeDashoffset="3"/>
-      <line x1="16" y1="4" x2="16" y2="28" stroke="var(--th-brand)" strokeWidth="1.4" strokeLinecap="round"/>
+      <circle cx="16" cy="16" r="9" stroke="var(--th-brand)" strokeWidth="1.1"
+        strokeDasharray="22 6" strokeDashoffset="3"/>
+      <line x1="16" y1="4" x2="16" y2="28" stroke="var(--th-brand)"
+        strokeWidth="1.4" strokeLinecap="round"/>
       <circle cx="16" cy="16" r="2" fill="var(--th-brand)"/>
     </svg>
   )
 }
 
 // ---------------------------------------------------------------------------
-// ResumeBanner — shown when a valid prior room is found in localStorage
+// ResumeBanner
 // ---------------------------------------------------------------------------
 
 type ResumeState =
@@ -72,13 +74,11 @@ function ResumeBanner({
           gap:           12,
         }}
       >
-        {/* Green pulse dot */}
         <div style={{
           width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
           background: '#4ade80', boxShadow: '0 0 8px #4ade80',
         }}/>
 
-        {/* Text */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ color: '#4ade80', fontSize: '0.72rem', fontWeight: 600, letterSpacing: '0.04em' }}>
             {label}
@@ -88,7 +88,6 @@ function ResumeBanner({
           </div>
         </div>
 
-        {/* Actions */}
         <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
           <button
             onClick={onDismiss}
@@ -140,18 +139,8 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState<string | null>(null)
 
-  // Resume-session state
   const [resume, setResume] = useState<ResumeState>({ status: 'checking' })
 
-  // ---------------------------------------------------------------------------
-  // On mount: check localStorage for a prior room the host created.
-  // We only look for rooms where this client was slot 1 (the host).
-  // If found, ping the Supabase REST endpoint to confirm the room still exists
-  // and hasn't expired. We use the public /api/rooms GET pattern via a simple
-  // fetch to /api/resume?roomId=... (handled inline via the existing Supabase
-  // client) — but since we don't want a new API route, we read directly from
-  // the browser Supabase client here (it's the homepage, client component).
-  // ---------------------------------------------------------------------------
   useEffect(() => {
     async function checkLastRoom() {
       let lastRoomId: string | null = null
@@ -167,23 +156,17 @@ export default function HomePage() {
         return
       }
 
-      // Confirm the slot is still recorded as player 1
       let slot: string | null = null
       try {
         slot = localStorage.getItem(SLOT_KEY(lastRoomId))
       } catch { /* ignore */ }
 
       if (slot !== '1') {
-        // Not our host room — clear stale key and bail
         try { localStorage.removeItem(LAST_ROOM_KEY) } catch { /* ignore */ }
         setResume({ status: 'none' })
         return
       }
 
-      // Verify the room is still alive by calling our existing ping route
-      // (avoids adding a new API route — we just need to know if it exists
-      //  and hasn't expired, which a simple fetch to the room API covers).
-      // We use the Supabase browser client directly since this is a client component.
       try {
         const { getSupabaseBrowserClient } = await import('@/lib/supabase')
         const supabase = getSupabaseBrowserClient()
@@ -200,7 +183,6 @@ export default function HomePage() {
         }
 
         if (new Date(data.expires_at) < new Date()) {
-          // Expired — clean up
           try {
             localStorage.removeItem(LAST_ROOM_KEY)
             localStorage.removeItem(SLOT_KEY(lastRoomId))
@@ -224,7 +206,9 @@ export default function HomePage() {
 
   function handleResume() {
     const r = resume as Extract<ResumeState, { status: 'found' }>
-    router.push(`/r/${r.roomId}`)
+    // Include ?h=1 so the room page can recover host identity even if
+    // localStorage was partially cleared on a different path.
+    router.push(`/r/${r.roomId}?h=1`)
   }
 
   function handleDismiss() {
@@ -256,13 +240,16 @@ export default function HomePage() {
     }
     const { roomId } = await res.json()
 
-    // Persist to localStorage (survives tab close, unlike sessionStorage)
     try {
       localStorage.setItem(SLOT_KEY(roomId), '1')
       localStorage.setItem(LAST_ROOM_KEY, roomId)
     } catch { /* private browsing — degrade gracefully */ }
 
-    router.push(`/r/${roomId}`)
+    // ?h=1 encodes the host role in the URL itself.
+    // The host should bookmark this URL — it identifies them as slot 1
+    // even if localStorage is cleared later.
+    // The SHARE link (shown on the waiting screen) strips this param.
+    router.push(`/r/${roomId}?h=1`)
   }
 
   return (
@@ -313,12 +300,10 @@ export default function HomePage() {
 
       <div className="hp-font-sans" style={{ minHeight:'100dvh', background:'var(--th-bg)', position:'relative', overflow:'hidden', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'40px 24px' }}>
 
-        {/* Theme toggle */}
         <div style={{ position:'absolute', top:18, right:20, zIndex:10 }}>
           <ThemeToggle/>
         </div>
 
-        {/* Ambient orbs */}
         {[
           { cls:'hp-orb-1', t:'-12%', l:'-10%', c:TIER_COLORS[0], op:'18' },
           { cls:'hp-orb-2', t:'-8%',  r:'-12%', c:TIER_COLORS[1], op:'14' },
@@ -328,10 +313,8 @@ export default function HomePage() {
           <div key={i} className={cls} style={{ position:'absolute', top:t, left:l, right:r, bottom:b, width:'52vw', height:'52vw', maxWidth:310, maxHeight:310, borderRadius:'50%', background:`radial-gradient(circle,${c}${op} 0%,transparent 70%)`, pointerEvents:'none' }}/>
         ))}
 
-        {/* Grain overlay */}
         <div style={{ position:'absolute', inset:0, pointerEvents:'none', backgroundImage:`url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E")`, backgroundSize:'180px 180px', opacity:0.5 }}/>
 
-        {/* Content */}
         <div style={{ position:'relative', zIndex:1, width:'100%', maxWidth:360, display:'flex', flexDirection:'column', alignItems:'center' }}>
 
           <div className="hp-sigil-in hp-sigil-pulse" style={{ marginBottom:28 }}>
@@ -361,10 +344,8 @@ export default function HomePage() {
             Light surface. Dark depths. No map.
           </p>
 
-          {/* Form area */}
           <div className="hp-form-in" style={{ width:'100%' }}>
 
-            {/* ── Resume banner ── */}
             {resume.status === 'found' && (
               <ResumeBanner
                 resume={resume}

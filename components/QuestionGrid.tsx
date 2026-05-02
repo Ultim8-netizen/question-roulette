@@ -20,15 +20,27 @@ export type DrawnCard = {
 }
 
 type QuestionGridProps = {
-  cards:   DrawnCard[]
-  onOpen?: (card: DrawnCard) => void
+  cards:          DrawnCard[]
+  onOpen?:        (card: DrawnCard) => void
+  /** Indices of cards that have received new messages since last opened. */
+  unreadIndices?: number[]
 }
 
 // ---------------------------------------------------------------------------
 // MiniCard
 // ---------------------------------------------------------------------------
 
-function MiniCard({ card, index, onOpen }: { card: DrawnCard; index: number; onOpen?: (card: DrawnCard) => void }) {
+function MiniCard({
+  card,
+  index,
+  onOpen,
+  hasUnread,
+}: {
+  card:      DrawnCard
+  index:     number
+  onOpen?:   (card: DrawnCard) => void
+  hasUnread: boolean
+}) {
   const { isDark }    = useTheme()
   const TIER_CONFIG   = getTierConfig(isDark)
   const [localRevealed, setLocalRevealed] = useState(false)
@@ -45,10 +57,12 @@ function MiniCard({ card, index, onOpen }: { card: DrawnCard; index: number; onO
   return (
     <>
       <style>{`
-        @keyframes mc-enter  { from{opacity:0;transform:translateY(14px) scale(0.96)} to{opacity:1;transform:translateY(0) scale(1)} }
-        @keyframes mc-flip-in{ 0%{transform:rotateY(90deg);opacity:0} 100%{transform:rotateY(0deg);opacity:1} }
+        @keyframes mc-enter   { from{opacity:0;transform:translateY(14px) scale(0.96)} to{opacity:1;transform:translateY(0) scale(1)} }
+        @keyframes mc-flip-in { 0%{transform:rotateY(90deg);opacity:0} 100%{transform:rotateY(0deg);opacity:1} }
+        @keyframes mc-unread  { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.55;transform:scale(1.25)} }
         .mc-card       { animation: mc-enter   0.4s cubic-bezier(0.22,1,0.36,1) both; }
         .mc-flip       { animation: mc-flip-in 0.38s cubic-bezier(0.22,1,0.36,1) both; }
+        .mc-unread-dot { animation: mc-unread  1.4s ease-in-out infinite; }
         .mc-font-serif { font-family:'Cormorant Garamond',Georgia,serif; }
         .mc-font-sans  { font-family:'DM Sans',system-ui,sans-serif; }
       `}</style>
@@ -67,10 +81,29 @@ function MiniCard({ card, index, onOpen }: { card: DrawnCard; index: number; onO
         }}
         onClick={handleTap}
       >
+        {/* ── Unread message badge ── */}
+        {hasUnread && (
+          <div
+            className="mc-unread-dot"
+            style={{
+              position:     'absolute',
+              top:           10,
+              right:         10,
+              zIndex:        20,
+              width:         11,
+              height:        11,
+              borderRadius: '50%',
+              background:   '#4ade80',
+              boxShadow:    '0 0 10px #4ade80, 0 0 20px rgba(74,222,128,0.4)',
+              border:       '2px solid var(--th-bg)',
+            }}
+            title="New message"
+          />
+        )}
+
         {/* ── UNREVEALED ── */}
         {!revealed && (
           <>
-            {/* Mini pattern */}
             <div className="absolute inset-0 pointer-events-none" style={{
               backgroundImage: card.tier === 'light'
                 ? `repeating-conic-gradient(from 0deg at 50% 50%, transparent 0deg, ${conf.primary}08 3deg, transparent 6deg)`
@@ -80,18 +113,15 @@ function MiniCard({ card, index, onOpen }: { card: DrawnCard; index: number; onO
                 ? `repeating-linear-gradient(135deg, ${conf.primary}08 0px, transparent 1px, transparent 14px, ${conf.primary}06 15px)`
                 : `repeating-linear-gradient(60deg, ${conf.primary}09 0px, transparent 1px, transparent 10px, ${conf.primary}06 11px)`,
             }}/>
-            {/* Vignette */}
             <div className="absolute inset-0 pointer-events-none" style={{
               background: `radial-gradient(ellipse at 50% 50%, transparent 35%, ${conf.darkBg}cc 100%)`,
             }}/>
-            {/* Center symbol */}
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
               <div style={{ opacity: 0.65 }}><MiniTierSymbol tier={card.tier} color={conf.primary}/></div>
               <span className="mc-font-sans" style={{ color:`${conf.primary}80`, fontSize:'0.60rem', fontWeight:600, letterSpacing:'0.14em', textTransform:'uppercase' }}>
                 {conf.label}
               </span>
             </div>
-            {/* Attribution chip */}
             <div className="mc-font-sans absolute top-3 left-3 right-3 flex items-center justify-between" style={{ gap:4 }}>
               <span style={{ color:`${conf.primary}55`, fontSize:'0.52rem', fontWeight:600, letterSpacing:'0.08em', textTransform:'uppercase' }}>
                 {card.drawnByMe ? 'you' : card.drawnByName}
@@ -102,9 +132,13 @@ function MiniCard({ card, index, onOpen }: { card: DrawnCard; index: number; onO
                 </span>
               )}
             </div>
-            {/* Tap hint */}
+            {/* Tap hint — show different label when unread */}
             <div className="mc-font-sans absolute bottom-4 left-0 right-0 flex justify-center" style={{ color:`${conf.primary}45`, fontSize:'0.58rem', letterSpacing:'0.08em' }}>
-              tap to open
+              {hasUnread ? (
+                <span style={{ color: '#4ade80', opacity: 0.8 }}>new message · tap to open</span>
+              ) : (
+                'tap to open'
+              )}
             </div>
           </>
         )}
@@ -139,7 +173,7 @@ function MiniCard({ card, index, onOpen }: { card: DrawnCard; index: number; onO
 }
 
 // ---------------------------------------------------------------------------
-// Mini tier symbol (no ID conflicts)
+// Mini tier symbol (no ID conflicts with PickModal)
 // ---------------------------------------------------------------------------
 
 function MiniTierSymbol({ tier, color }: { tier: QuestionTier; color: string }) {
@@ -208,7 +242,9 @@ function EmptyState() {
 // QuestionGrid
 // ---------------------------------------------------------------------------
 
-export function QuestionGrid({ cards, onOpen }: QuestionGridProps) {
+export function QuestionGrid({ cards, onOpen, unreadIndices = [] }: QuestionGridProps) {
+  const unreadSet = new Set(unreadIndices)
+
   return (
     <>
       <style>{`
@@ -221,13 +257,35 @@ export function QuestionGrid({ cards, onOpen }: QuestionGridProps) {
               Drawn this session
             </span>
             <div className="flex-1" style={{ height:'1px', background:'linear-gradient(90deg,var(--th-border-2),transparent)' }}/>
+            {unreadIndices.length > 0 && (
+              <span style={{
+                color:         '#4ade80',
+                fontSize:      '0.60rem',
+                fontWeight:     600,
+                background:    'rgba(74,222,128,0.10)',
+                border:        '1px solid rgba(74,222,128,0.22)',
+                borderRadius:   99,
+                padding:       '2px 8px',
+                letterSpacing: '0.06em',
+              }}>
+                {unreadIndices.length} new
+              </span>
+            )}
             <span style={{ color:'var(--th-text-4)', fontSize:'0.65rem', fontWeight:500 }}>{cards.length}</span>
           </div>
         )}
         <div className="grid grid-cols-2 gap-3">
           {cards.length === 0
             ? <EmptyState/>
-            : cards.map((card,idx) => <MiniCard key={card.key} card={card} index={idx} onOpen={onOpen}/>)
+            : cards.map((card, idx) => (
+                <MiniCard
+                  key={card.key}
+                  card={card}
+                  index={idx}
+                  onOpen={onOpen}
+                  hasUnread={unreadSet.has(card.questionIndex)}
+                />
+              ))
           }
         </div>
       </div>
