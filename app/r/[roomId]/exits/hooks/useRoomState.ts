@@ -277,18 +277,31 @@ export function useRoomState(roomId: string): RoomStateReturn {
         setCards(reconstructed)
       }
 
-      // Resolve slot
-      const stored = sessionStorage.getItem(`f9q-slot-${roomId}`)
+      // Resolve slot.
+      // app/page.tsx (host creation) writes to localStorage under 'f9q-slot-{roomId}'.
+      // handleJoin (player 2) writes to localStorage as well.
+      // sessionStorage is checked as a legacy fallback only.
+      const slotKey = `f9q-slot-${roomId}`
+      let stored: string | null = null
+      try { stored = localStorage.getItem(slotKey) } catch { /* private browsing */ }
+      if (!stored) {
+        try { stored = sessionStorage.getItem(slotKey) } catch { /* ignore */ }
+      }
+
       if (stored === '1') {
         setMySlot(1)
       } else if (stored === '2') {
         setMySlot(2)
       } else {
+        // No slot recorded — this client is an unrecognised visitor.
         if (!r.player2_name) {
+          // Room still needs a second player — show the join screen.
           setNeedsJoin(true)
         } else {
+          // Room is full and this client has no slot recorded; treat as player 2
+          // (e.g. player 2 returning after clearing storage).
           setMySlot(2)
-          sessionStorage.setItem(`f9q-slot-${roomId}`, '2')
+          try { localStorage.setItem(slotKey, '2') } catch { /* ignore */ }
         }
       }
     }
@@ -314,6 +327,7 @@ export function useRoomState(roomId: string): RoomStateReturn {
 
     const data = await res.json()
     sessionStorage.setItem(`f9q-slot-${roomId}`, '2')
+    try { localStorage.setItem(`f9q-slot-${roomId}`, '2') } catch { /* ignore */ }
     setMySlot(2)
     setNeedsJoin(false)
     setHasBothPlayers(true)
