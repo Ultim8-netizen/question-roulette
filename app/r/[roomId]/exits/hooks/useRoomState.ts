@@ -1,3 +1,4 @@
+// app/r/[roomId]/exits/hooks/useRoomState.ts
 'use client'
 
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
@@ -298,25 +299,10 @@ export function useRoomState(roomId: string): RoomStateReturn {
       setHasBothPlayers(!!r.player2_name)
       if (r.pending_question) setPendingProposal(r.pending_question)
 
-      if (r.drawn_indices?.length && r.question_pool) {
-        const reconstructed: DrawnCard[] = r.drawn_indices
-          .map((qi: number, position: number) => {
-            const q = r.question_pool[qi]
-            if (!q) return null
-            return {
-              key:           `${qi}-${position}`,
-              questionIndex: qi,
-              questionText:  q.text,
-              tier:          q.tier,
-              isCustom:      q.isCustom,
-              drawnByName:   r.player1_name,
-              drawnByMe:     false,
-            }
-          })
-          .filter(Boolean) as DrawnCard[]
-        setCards(reconstructed)
-      }
-
+      // ── Resolve mySlot first so card reconstruction can use it ──────────
+      // Slot resolution is synchronous (localStorage/sessionStorage + URL
+      // params). We resolve it into a local variable here, then commit it to
+      // state at the end of this function as before.
       const slotKey = `f9q-slot-${roomId}`
       let stored: string | null = null
       try { stored = localStorage.getItem(slotKey) } catch { /* private browsing */ }
@@ -324,23 +310,63 @@ export function useRoomState(roomId: string): RoomStateReturn {
         try { stored = sessionStorage.getItem(slotKey) } catch { /* ignore */ }
       }
 
-      const resolveSlot = (slot: PlayerSlot) => {
-        setMySlot(slot)
-        try { localStorage.setItem(slotKey, String(slot)) } catch { /* ignore */ }
-      }
+      let resolvedSlot: PlayerSlot | null = null
 
       if (stored === '1') {
-        setMySlot(1)
+        resolvedSlot = 1
       } else if (stored === '2') {
-        setMySlot(2)
+        resolvedSlot = 2
       } else if (isHostUrl()) {
-        resolveSlot(1)
+        resolvedSlot = 1
+        try { localStorage.setItem(slotKey, '1') } catch { /* ignore */ }
       } else if (isP2Url()) {
-        resolveSlot(2)
+        resolvedSlot = 2
+        try { localStorage.setItem(slotKey, '2') } catch { /* ignore */ }
+      } else if (!r.player2_name) {
+        // needsJoin — slot stays null until they join
+      } else {
+        resolvedSlot = 2
+        try { localStorage.setItem(slotKey, '2') } catch { /* ignore */ }
+      }
+
+      // ── Reconstruct drawn cards with correct attribution ────────────────
+      // Rooms are always created with current_turn=1, so draws alternate
+      // starting from player 1:
+      //   position 0 → player 1, position 1 → player 2, position 2 → player 1, …
+      if (r.drawn_indices?.length && r.question_pool) {
+        const reconstructed: DrawnCard[] = r.drawn_indices
+          .map((qi: number, position: number) => {
+            const q = r.question_pool[qi]
+            if (!q) return null
+
+            // Infer drawer from turn order
+            const drawnByPlayer: PlayerSlot = position % 2 === 0 ? 1 : 2
+            const drawnByName =
+              drawnByPlayer === 1
+                ? (r.player1_name ?? 'Player 1')
+                : (r.player2_name ?? 'Player 2')
+
+            return {
+              key:           `${qi}-${position}`,
+              questionIndex: qi,
+              questionText:  q.text,
+              tier:          q.tier,
+              isCustom:      q.isCustom,
+              drawnByName,
+              drawnByMe:     resolvedSlot !== null && drawnByPlayer === resolvedSlot,
+            }
+          })
+          .filter(Boolean) as DrawnCard[]
+        setCards(reconstructed)
+      }
+
+      // ── Commit resolved slot to state ────────────────────────────────────
+      // (mirrors the original setState calls so downstream behaviour is
+      //  identical — only the local-variable resolution moved up)
+      if (resolvedSlot !== null) {
+        setMySlot(resolvedSlot)
       } else if (!r.player2_name) {
         setNeedsJoin(true)
-      } else {
-        resolveSlot(2)
       }
     }
 
@@ -565,10 +591,8 @@ export function useRoomState(roomId: string): RoomStateReturn {
   async function handleEditMessage(messageId: string, content: string) {
     if (!mySlot) return
 
-    // Store original for rollback
     const original = messages.find(m => m.id === messageId)
 
-    // Optimistic update
     setMessages(prev =>
       prev.map(m =>
         m.id === messageId ? { ...m, content, edited_at: new Date().toISOString() } : m,
@@ -582,7 +606,6 @@ export function useRoomState(roomId: string): RoomStateReturn {
     })
 
     if (!res.ok) {
-      // Rollback optimistic update
       if (original) {
         setMessages(prev =>
           prev.map(m => (m.id === messageId ? original : m)),
