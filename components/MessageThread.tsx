@@ -35,13 +35,11 @@ export function MessageThread({
     try { return sessionStorage.getItem(draftKey) ?? '' } catch { return '' }
   })
 
-  // Reply state
   const [replyTo, setReplyTo] = useState<Message | null>(null)
 
-  // Edit state
-  const [editingId,   setEditingId]   = useState<string | null>(null)
-  const [editDraft,   setEditDraft]   = useState('')
-  const [editSaving,  setEditSaving]  = useState(false)
+  const [editingId,  setEditingId]  = useState<string | null>(null)
+  const [editDraft,  setEditDraft]  = useState('')
+  const [editSaving, setEditSaving] = useState(false)
 
   const scrollRef       = useRef<HTMLDivElement>(null)
   const textareaRef     = useRef<HTMLTextAreaElement>(null)
@@ -51,27 +49,23 @@ export function MessageThread({
   const THROTTLE_MS     = 1_500
   const LONG_PRESS_MS   = 500
 
-  // Restore draft textarea height on mount
   useEffect(() => {
     const ta = textareaRef.current
     if (ta && draft) { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 96) + 'px' }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Auto-scroll on new messages or typing indicator
   useEffect(() => {
     const el = scrollRef.current
     if (el) el.scrollTop = el.scrollHeight
   }, [messages, isOtherTyping])
 
-  // Focus edit textarea when edit mode activates
   useEffect(() => {
     if (editingId && editTextareaRef.current) {
       const ta = editTextareaRef.current
       ta.focus()
       ta.style.height = 'auto'
       ta.style.height = Math.min(ta.scrollHeight, 120) + 'px'
-      // Place cursor at end
       ta.selectionStart = ta.selectionEnd = ta.value.length
     }
   }, [editingId])
@@ -79,7 +73,6 @@ export function MessageThread({
   // ── Long-press handlers ──────────────────────────────────────────────────
 
   function startLongPress(msg: Message) {
-    // Only own messages are editable
     if (msg.player !== mySlot) return
     longPressRef.current = setTimeout(() => {
       setEditingId(msg.id)
@@ -145,8 +138,11 @@ export function MessageThread({
     setEditSaving(true)
     setEditingId(null)
     setEditDraft('')
-    setEditSaving(false)
-    await onEdit(id, trimmed)
+    try {
+      await onEdit(id, trimmed)
+    } finally {
+      setEditSaving(false)
+    }
   }
 
   function handleEditCancel() {
@@ -228,7 +224,6 @@ export function MessageThread({
                 const isMe      = msg.player === mySlot
                 const isEditing = editingId === msg.id
 
-                // Resolve reply-to message from local state
                 const repliedMsg = msg.reply_to_message_id
                   ? messages.find(m => m.id === msg.reply_to_message_id) ?? null
                   : null
@@ -272,10 +267,10 @@ export function MessageThread({
                           </button>
                           <button
                             onClick={handleEditSave}
-                            disabled={!editDraft.trim()}
-                            style={{ padding: '4px 14px', borderRadius: 8, background: editDraft.trim() ? `${accentColor}18` : 'transparent', border: `1px solid ${editDraft.trim() ? `${accentColor}44` : 'var(--th-border)'}`, color: editDraft.trim() ? accentColor : 'var(--th-text-4)', fontSize: '0.70rem', fontWeight: 600, cursor: editDraft.trim() ? 'pointer' : 'default', fontFamily: "'Figtree',system-ui,sans-serif", transition: 'all 0.15s ease' }}
+                            disabled={!editDraft.trim() || editSaving}
+                            style={{ padding: '4px 14px', borderRadius: 8, background: editDraft.trim() ? `${accentColor}18` : 'transparent', border: `1px solid ${editDraft.trim() ? `${accentColor}44` : 'var(--th-border)'}`, color: editDraft.trim() ? accentColor : 'var(--th-text-4)', fontSize: '0.70rem', fontWeight: 600, cursor: editDraft.trim() && !editSaving ? 'pointer' : 'default', fontFamily: "'Figtree',system-ui,sans-serif", transition: 'all 0.15s ease' }}
                           >
-                            Save
+                            {editSaving ? 'Saving…' : 'Save'}
                           </button>
                         </div>
                       </div>
@@ -308,16 +303,30 @@ export function MessageThread({
                           {msg.content}
                         </div>
 
-                        {/* Edited label */}
+                        {/* Edited badge */}
                         {msg.edited_at && (
-                          <div style={{ padding: '0 12px 6px', color: 'var(--th-text-4)', fontSize: '0.54rem', fontStyle: 'italic', fontFamily: "'Figtree',system-ui,sans-serif" }}>
-                            edited
+                          <div style={{ padding: '0 10px 8px', display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start' }}>
+                            <span style={{
+                              fontFamily:    "'Figtree',system-ui,sans-serif",
+                              fontSize:      '0.52rem',
+                              fontWeight:     500,
+                              fontStyle:     'italic',
+                              color:          isMe ? `${accentColor}88` : 'var(--th-text-3)',
+                              background:     isMe ? `${accentColor}0d` : 'var(--th-surface-2)',
+                              border:        `1px solid ${isMe ? `${accentColor}22` : 'var(--th-border)'}`,
+                              borderRadius:   99,
+                              padding:       '1px 7px',
+                              letterSpacing: '0.04em',
+                              lineHeight:     1.6,
+                            }}>
+                              edited
+                            </span>
                           </div>
                         )}
                       </div>
                     )}
 
-                    {/* Hint labels — only shown for non-editing state */}
+                    {/* Hint labels */}
                     {!isEditing && (
                       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                         <span style={{ color: 'var(--th-text-4)', fontSize: '0.50rem', fontFamily: "'Figtree',system-ui,sans-serif", opacity: 0.6 }}>
@@ -343,13 +352,12 @@ export function MessageThread({
           )}
         </div>
 
-        {/* Reply bar — shown when replyTo is set */}
+        {/* Reply bar */}
         {replyTo && (
           <div
             className="mt-reply-bar"
             style={{ marginBottom: 6, padding: '7px 10px', borderRadius: 10, background: `${accentColor}0c`, border: `1px solid ${accentColor}2a`, display: 'flex', alignItems: 'flex-start', gap: 8, flexShrink: 0 }}
           >
-            {/* Reply icon */}
             <svg width="12" height="12" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0, marginTop: 2, opacity: 0.7 }}>
               <path d="M2 4l4-3v2c3 0 6 2 6 6-1-2.5-3-3.5-6-3.5V8L2 4z" fill={accentColor} />
             </svg>
