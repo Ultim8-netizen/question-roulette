@@ -20,16 +20,14 @@ export function FeedbackWidget() {
   const [type,    setType]    = useState<FeedbackType>('general')
   const [message, setMessage] = useState('')
   const [contact, setContact] = useState('')
-  const [pageUrl, setPageUrl] = useState('')
 
-  const backdropRef  = useRef<HTMLDivElement>(null)
-  const textareaRef  = useRef<HTMLTextAreaElement>(null)
-  const CHAR_LIMIT   = 1000
+  const backdropRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const CHAR_LIMIT  = 1000
 
-  // Capture URL at open time
+  // Focus textarea when sheet opens — DOM side-effect only, no setState
   useEffect(() => {
     if (phase === 'open') {
-      try { setPageUrl(window.location.href) } catch { /* ignore */ }
       setTimeout(() => textareaRef.current?.focus(), 80)
     }
   }, [phase])
@@ -42,8 +40,7 @@ export function FeedbackWidget() {
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase])
+  })
 
   // Prevent body scroll while open
   useEffect(() => {
@@ -72,6 +69,11 @@ export function FeedbackWidget() {
   async function handleSubmit() {
     const trimmed = message.trim()
     if (!trimmed || phase === 'sending') return
+
+    // Capture URL at submit time — no effect, no setState
+    let pageUrl: string | null = null
+    try { pageUrl = window.location.href } catch { /* ignore */ }
+
     setPhase('sending')
 
     try {
@@ -82,7 +84,7 @@ export function FeedbackWidget() {
           type,
           message: trimmed,
           contact: contact.trim() || null,
-          pageUrl: pageUrl || null,
+          pageUrl,
         }),
       })
 
