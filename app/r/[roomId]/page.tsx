@@ -1,7 +1,7 @@
 'use client'
 
-import { useParams } from 'next/navigation'
-import { useRoomState } from './exits/hooks/useRoomState'
+import { useParams }      from 'next/navigation'
+import { useRoomState }   from './exits/hooks/useRoomState'
 import { JoinScreen }     from './_components/JoinScreen'
 import { WaitingScreen }  from './_components/WaitingScreen'
 import { Toast }          from './_components/Toast'
@@ -11,49 +11,55 @@ import {
   PendingNotice,
   PlayerHeader,
 } from './_components/ConsentBanner'
+import { CoachTip }       from './_components/CoachTip'
 import { ProposeModal }   from './_components/ProposeModal'
 import { TurnBanner }     from '@/components/TurnBanner'
 import { QuestionGrid }   from '@/components/QuestionGrid'
 import { DrawButton }     from '@/components/DrawButton'
 import { PickModal }      from '@/components/PickModal'
 import { ThemeToggle }    from '@/components/ThemeToggle'
-import HowToPlayPage      from '@/app/how-to-play/page'
 import { useState }       from 'react'
 
-const HTP_SEEN_KEY = 'f9q-htp-seen'
-
-function hasSeenHTP(): boolean {
-  if (typeof window === 'undefined') return false
-  try { return !!sessionStorage.getItem(HTP_SEEN_KEY) } catch { return false }
-}
-
-function markHTPSeen(): void {
-  try { sessionStorage.setItem(HTP_SEEN_KEY, '1') } catch { /* private browsing */ }
-}
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 function LoadingSpinner() {
   return (
     <>
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
-      <div style={{ minHeight: '100dvh', background: 'var(--th-bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
-        <div style={{ width: 28, height: 28, borderRadius: '50%', border: '2px solid var(--th-border-2)', borderTopColor: 'var(--th-text-3)', animation: 'spin 0.8s linear infinite' }} />
+      <div style={{
+        minHeight:      '100dvh',
+        background:     'var(--th-bg)',
+        display:        'flex',
+        flexDirection:  'column',
+        alignItems:     'center',
+        justifyContent: 'center',
+        gap:             20,
+      }}>
+        <div style={{
+          width:       28,
+          height:      28,
+          borderRadius:'50%',
+          border:      '2px solid var(--th-border-2)',
+          borderTopColor: 'var(--th-text-3)',
+          animation:   'spin 0.8s linear infinite',
+        }} />
         <BrandWatermark />
       </div>
     </>
   )
 }
 
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
+
 export default function RoomPage() {
   const params = useParams()
   const roomId = params.roomId as string
 
   const [proposeOpen, setProposeOpen] = useState(false)
-  const [showHTP, setShowHTP] = useState<boolean>(() => !hasSeenHTP())
-
-  function handleHTPClose() {
-    markHTPSeen()
-    setShowHTP(false)
-  }
 
   const {
     room, mySlot, needsJoin, hasBothPlayers, currentTurn, cards, activePick,
@@ -65,7 +71,7 @@ export default function RoomPage() {
     handleTyping, clearToast,
   } = useRoomState(roomId)
 
-  const isMyTurn   = mySlot !== null && currentTurn === mySlot
+  const isMyTurn  = mySlot !== null && currentTurn === mySlot
   const canPropose = !pendingProposal
 
   const shareUrl =
@@ -75,14 +81,25 @@ export default function RoomPage() {
   const p2Name = room?.player2_name ?? 'Player 2'
   const myName = mySlot === 1 ? p1Name : p2Name
 
+  // Name of whoever's turn it currently is — used by CoachTip for the
+  // non-drawer variant ("X goes first — tap the card when it appears")
+  const drawerName = currentTurn === 1 ? p1Name : p2Name
+
   const draftKey = activePick
     ? `f9q-draft-${roomId}-${activePick.questionIndex}`
     : ''
 
-  if (showHTP) return <HowToPlayPage onClose={handleHTPClose} />
+  // ── Early returns (unchanged) ──────────────────────────────────────────
+
   if (!room)                           return <LoadingSpinner />
   if (needsJoin)                       return <JoinScreen onJoin={handleJoin} loading={joinLoading} />
   if (!hasBothPlayers && mySlot === 1) return <WaitingScreen shareUrl={shareUrl} />
+
+  // ── Main game render ───────────────────────────────────────────────────
+
+  // CoachTip visibility: both players joined, no cards drawn yet,
+  // and no pending proposal consuming the attention slot.
+  const showCoachTip = hasBothPlayers && cards.length === 0 && !pendingProposal
 
   return (
     <>
@@ -92,6 +109,7 @@ export default function RoomPage() {
       `}</style>
 
       <main style={{ minHeight: '100dvh', background: 'var(--th-bg)', paddingBottom: 140 }}>
+
         <PlayerHeader
           p1Name={p1Name}
           p2Name={p2Name}
@@ -99,6 +117,7 @@ export default function RoomPage() {
           myPersonalUrl={myPersonalUrl}
           themeToggle={<ThemeToggle />}
         />
+
         <TurnBanner
           currentTurn={currentTurn}
           mySlot={mySlot ?? 1}
@@ -107,6 +126,14 @@ export default function RoomPage() {
           channelStatus={channelStatus}
         />
 
+        {/* Ambient first-draw coaching — unmounts automatically once
+            the first card lands (cards.length > 0). Not a gate.        */}
+        {showCoachTip && (
+          <CoachTip isMyTurn={isMyTurn} drawerName={drawerName} />
+        )}
+
+        {/* Consent / pending banners sit below the tip so neither
+            competes for the same visual slot simultaneously.           */}
         {pendingProposal && pendingProposal.proposedBy !== mySlot && (
           <ConsentBanner
             proposal={pendingProposal}
@@ -119,7 +146,11 @@ export default function RoomPage() {
 
         <div style={{ height: 16 }} />
 
-        <QuestionGrid cards={cards} onOpen={handleOpenCard} unreadIndices={unreadCardIndices} />
+        <QuestionGrid
+          cards={cards}
+          onOpen={handleOpenCard}
+          unreadIndices={unreadCardIndices}
+        />
 
         <div style={{ paddingBottom: 8 }}>
           <BrandWatermark />
@@ -157,7 +188,10 @@ export default function RoomPage() {
 
       {proposeOpen && (
         <ProposeModal
-          onSubmit={async (text, tier) => { await handlePropose(text, tier); setProposeOpen(false) }}
+          onSubmit={async (text, tier) => {
+            await handlePropose(text, tier)
+            setProposeOpen(false)
+          }}
           onCancel={() => setProposeOpen(false)}
           loading={proposeLoading}
         />
