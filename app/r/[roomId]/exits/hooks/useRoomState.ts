@@ -119,11 +119,20 @@ export function useRoomState(roomId: string): RoomStateReturn {
   const mySlotRef        = useRef<PlayerSlot | null>(null)
   const activePickRef    = useRef<PickState | null>(null)
 
+  // ── Pending edits ref ──────────────────────────────────────────────────────
+  // Tracks edits that are in-flight (PATCH sent but not yet confirmed) or
+  // recently confirmed (PATCH done but loadMessagesForCard may not have
+  // fetched the updated row yet). This ensures loadMessagesForCard never
+  // overwrites a local edit with a stale server response.
+  const pendingEditsRef = useRef<Map<string, { content: string; edited_at: string }>>(new Map())
+
   useEffect(() => { roomRef.current       = room      }, [room])
   useEffect(() => { mySlotRef.current     = mySlot    }, [mySlot])
   useEffect(() => { activePickRef.current = activePick }, [activePick])
 
   // ── Message loader ─────────────────────────────────────────────────────────
+  // Applies any pending in-flight edits on top of the server payload so that
+  // a slow or racing GET never reverts an optimistic edit.
 
   async function loadMessagesForCard(questionIndex: number) {
     const res = await fetch(
@@ -131,7 +140,20 @@ export function useRoomState(roomId: string): RoomStateReturn {
     )
     if (!res.ok) return
     const data = await res.json()
-    setMessages(data.messages ?? [])
+    const serverMessages: Message[] = data.messages ?? []
+
+    if (pendingEditsRef.current.size === 0) {
+      setMessages(serverMessages)
+    } else {
+      setMessages(
+        serverMessages.map(m => {
+          const pending = pendingEditsRef.current.get(m.id)
+          return pending
+            ? { ...m, content: pending.content, edited_at: pending.edited_at }
+            : m
+        }),
+      )
+    }
   }
 
   // ── Realtime event handler ─────────────────────────────────────────────────
@@ -263,11 +285,6 @@ export function useRoomState(roomId: string): RoomStateReturn {
           setActivePick(null)
           setMessages([])
 
-          // ── Contextual toast ───────────────────────────────────────────
-          // This event only fires on the *receiver* (useRoomChannel has
-          // self: false). So whoever sees this toast is always the player
-          // who did NOT close the card. Give them a useful message instead
-          // of the generic 'Card closed'.
           const r2 = roomRef.current
           const closerName =
             mySlotRef.current === 1
@@ -591,11 +608,21 @@ export function useRoomState(roomId: string): RoomStateReturn {
   async function handleEditMessage(messageId: string, content: string) {
     if (!mySlot) return
 
+    // Snapshot the pre-edit message for the error-revert path.
     const original = messages.find(m => m.id === messageId)
 
+    const optimisticEditedAt = new Date().toISOString()
+
+    // Register the pending edit BEFORE the PATCH so that any concurrent
+    // loadMessagesForCard call (triggered by card close/reopen while the
+    // network request is in-flight) re-applies this edit on top of whatever
+    // the server returns, preventing stale data from reverting the change.
+    pendingEditsRef.current.set(messageId, { content, edited_at: optimisticEditedAt })
+
+    // Optimistic update — visible immediately.
     setMessages(prev =>
       prev.map(m =>
-        m.id === messageId ? { ...m, content, edited_at: new Date().toISOString() } : m,
+        m.id === messageId ? { ...m, content, edited_at: optimisticEditedAt } : m,
       ),
     )
 
@@ -606,6 +633,8 @@ export function useRoomState(roomId: string): RoomStateReturn {
     })
 
     if (!res.ok) {
+      // PATCH failed — clear the pending edit and revert the optimistic update.
+      pendingEditsRef.current.delete(messageId)
       if (original) {
         setMessages(prev =>
           prev.map(m => (m.id === messageId ? original : m)),
@@ -617,11 +646,16 @@ export function useRoomState(roomId: string): RoomStateReturn {
 
     const { editedAt } = await res.json()
 
+    // Apply the server-confirmed timestamp.
     setMessages(prev =>
       prev.map(m =>
         m.id === messageId ? { ...m, content, edited_at: editedAt } : m,
       ),
     )
+
+    // PATCH committed — the DB now has the edit. Clear the pending entry so
+    // future loadMessagesForCard calls read fresh server data normally.
+    pendingEditsRef.current.delete(messageId)
 
     await sendEvent({ type: 'MESSAGE_EDITED', messageId, content, editedAt })
   }
