@@ -262,7 +262,19 @@ export function useRoomState(roomId: string): RoomStateReturn {
           setOtherTypingIndex(null)
           setActivePick(null)
           setMessages([])
-          setToast('Card closed')
+
+          // ── Contextual toast ───────────────────────────────────────────
+          // This event only fires on the *receiver* (useRoomChannel has
+          // self: false). So whoever sees this toast is always the player
+          // who did NOT close the card. Give them a useful message instead
+          // of the generic 'Card closed'.
+          const r2 = roomRef.current
+          const closerName =
+            mySlotRef.current === 1
+              ? (r2?.player2_name ?? 'They')
+              : (r2?.player1_name ?? 'They')
+
+          setToast(`${closerName} closed the card — tap it in the grid to continue`)
         }
       }
     },
@@ -299,10 +311,6 @@ export function useRoomState(roomId: string): RoomStateReturn {
       setHasBothPlayers(!!r.player2_name)
       if (r.pending_question) setPendingProposal(r.pending_question)
 
-      // ── Resolve mySlot first so card reconstruction can use it ──────────
-      // Slot resolution is synchronous (localStorage/sessionStorage + URL
-      // params). We resolve it into a local variable here, then commit it to
-      // state at the end of this function as before.
       const slotKey = `f9q-slot-${roomId}`
       let stored: string | null = null
       try { stored = localStorage.getItem(slotKey) } catch { /* private browsing */ }
@@ -329,17 +337,12 @@ export function useRoomState(roomId: string): RoomStateReturn {
         try { localStorage.setItem(slotKey, '2') } catch { /* ignore */ }
       }
 
-      // ── Reconstruct drawn cards with correct attribution ────────────────
-      // Rooms are always created with current_turn=1, so draws alternate
-      // starting from player 1:
-      //   position 0 → player 1, position 1 → player 2, position 2 → player 1, …
       if (r.drawn_indices?.length && r.question_pool) {
         const reconstructed: DrawnCard[] = r.drawn_indices
           .map((qi: number, position: number) => {
             const q = r.question_pool[qi]
             if (!q) return null
 
-            // Infer drawer from turn order
             const drawnByPlayer: PlayerSlot = position % 2 === 0 ? 1 : 2
             const drawnByName =
               drawnByPlayer === 1
@@ -360,9 +363,6 @@ export function useRoomState(roomId: string): RoomStateReturn {
         setCards(reconstructed)
       }
 
-      // ── Commit resolved slot to state ────────────────────────────────────
-      // (mirrors the original setState calls so downstream behaviour is
-      //  identical — only the local-variable resolution moved up)
       if (resolvedSlot !== null) {
         setMySlot(resolvedSlot)
       } else if (!r.player2_name) {

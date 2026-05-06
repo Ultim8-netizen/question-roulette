@@ -3,6 +3,38 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Message, PlayerSlot } from '@/lib/supabase'
 
+// ---------------------------------------------------------------------------
+// One-time tip hook — shows a piece of UI exactly once per device.
+// Reads localStorage during useState lazy init (no effect needed),
+// which satisfies react-hooks/set-state-in-effect.
+// ---------------------------------------------------------------------------
+
+function useOneTip(key: string): [boolean, () => void] {
+  const storageKey = `r13-tip-${key}`
+
+  // Lazy initializer runs once synchronously on first render — not inside
+  // an effect — so no setState-in-effect violation occurs.
+  const [visible, setVisible] = useState<boolean>(() => {
+    try {
+      return !localStorage.getItem(storageKey)
+    } catch {
+      // Private browsing or SSR — show the tip.
+      return true
+    }
+  })
+
+  function dismiss() {
+    setVisible(false)
+    try { localStorage.setItem(storageKey, '1') } catch { /* ignore */ }
+  }
+
+  return [visible, dismiss]
+}
+
+// ---------------------------------------------------------------------------
+// Types / helpers
+// ---------------------------------------------------------------------------
+
 type MessageThreadProps = {
   messages:      Message[]
   mySlot:        PlayerSlot
@@ -41,6 +73,8 @@ export function MessageThread({
   const [editDraft,  setEditDraft]  = useState('')
   const [editSaving, setEditSaving] = useState(false)
 
+  const [hintVisible, dismissHint] = useOneTip('msg-interactions')
+
   const scrollRef       = useRef<HTMLDivElement>(null)
   const textareaRef     = useRef<HTMLTextAreaElement>(null)
   const editTextareaRef = useRef<HTMLTextAreaElement>(null)
@@ -60,6 +94,14 @@ export function MessageThread({
     if (el) el.scrollTop = el.scrollHeight
   }, [messages, isOtherTyping])
 
+  // Auto-dismiss at 2+ messages — user has seen the thread working,
+  // hint is now noise. dismiss() only calls setVisible(false) and
+  // localStorage.setItem — no cascading render risk.
+  useEffect(() => {
+    if (messages.length >= 2 && hintVisible) dismissHint()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages.length])
+
   useEffect(() => {
     if (editingId && editTextareaRef.current) {
       const ta = editTextareaRef.current
@@ -77,6 +119,7 @@ export function MessageThread({
     longPressRef.current = setTimeout(() => {
       setEditingId(msg.id)
       setEditDraft(msg.content)
+      if (hintVisible) dismissHint()
     }, LONG_PRESS_MS)
   }
 
@@ -122,6 +165,13 @@ export function MessageThread({
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
   }
 
+  // ── Reply via double-click ────────────────────────────────────────────────
+
+  function handleDoubleClick(msg: Message) {
+    setReplyTo(msg)
+    if (hintVisible) dismissHint()
+  }
+
   // ── Edit handlers ────────────────────────────────────────────────────────
 
   function handleEditInput(e: React.ChangeEvent<HTMLTextAreaElement>) {
@@ -156,6 +206,7 @@ export function MessageThread({
   }
 
   const canSend = draft.trim().length > 0 && !isSending
+  const showInteractionHint = hintVisible && messages.length > 0
 
   return (
     <>
@@ -167,6 +218,7 @@ export function MessageThread({
         @keyframes mt-typing-dot { 0%,60%,100%{transform:translateY(0);opacity:0.4} 30%{transform:translateY(-3px);opacity:1} }
         @keyframes mt-reply-in   { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
         @keyframes mt-edit-in    { from{opacity:0;transform:scale(0.98)} to{opacity:1;transform:scale(1)} }
+        @keyframes mt-hint-in    { from{opacity:0} to{opacity:1} }
 
         .mt-scroll::-webkit-scrollbar       { width:3px }
         .mt-scroll::-webkit-scrollbar-track  { background:transparent }
@@ -179,6 +231,7 @@ export function MessageThread({
         .mt-typing-dot-3 { animation:mt-typing-dot 1.2s ease-in-out 0.4s infinite }
         .mt-reply-bar    { animation:mt-reply-in   0.18s ease both }
         .mt-edit-box     { animation:mt-edit-in    0.16s ease both }
+        .mt-hint-bar     { animation:mt-hint-in    0.30s ease 0.2s both }
 
         .mt-bubble {
           -webkit-touch-callout: none;
@@ -193,7 +246,7 @@ export function MessageThread({
         <div style={{ height: 1, background: 'var(--th-border)', margin: '14px 0 12px', flexShrink: 0 }} />
 
         {/* Thread header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: showInteractionHint ? 8 : 10, flexShrink: 0 }}>
           <div style={{ width: 5, height: 5, borderRadius: '50%', background: accentColor, boxShadow: `0 0 6px ${accentColor}`, flexShrink: 0 }} />
           <span style={{ fontFamily: "'Syne',system-ui,sans-serif", color: 'var(--th-text-3)', fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase' }}>Responses</span>
           {messages.length > 0 && (
@@ -207,6 +260,36 @@ export function MessageThread({
             </span>
           )}
         </div>
+
+        {/* One-time interaction hint */}
+        {showInteractionHint && (
+          <div
+            className="mt-hint-bar"
+            style={{
+              display:        'flex',
+              alignItems:     'center',
+              justifyContent: 'space-between',
+              gap:             8,
+              marginBottom:    10,
+              padding:        '7px 10px',
+              borderRadius:    10,
+              background:     `${accentColor}0a`,
+              border:         `1px solid ${accentColor}1a`,
+              flexShrink:      0,
+            }}
+          >
+            <span style={{ fontFamily: "'Figtree',system-ui,sans-serif", color: 'var(--th-text-3)', fontSize: '0.62rem', lineHeight: 1.5 }}>
+              Double-tap to reply · Hold your own message to edit
+            </span>
+            <button
+              onClick={dismissHint}
+              aria-label="Dismiss tip"
+              style={{ background: 'none', border: 'none', color: 'var(--th-text-4)', cursor: 'pointer', fontSize: '0.80rem', lineHeight: 1, padding: '0 2px', flexShrink: 0 }}
+            >
+              ×
+            </button>
+          </div>
+        )}
 
         {/* Message list */}
         <div
@@ -234,7 +317,7 @@ export function MessageThread({
                     className="mt-msg"
                     style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', gap: 3 }}
                   >
-                    {/* Sender + timestamp row */}
+                    {/* Sender + timestamp */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexDirection: isMe ? 'row-reverse' : 'row' }}>
                       <span style={{ fontFamily: "'Syne',system-ui,sans-serif", color: isMe ? `${accentColor}99` : 'var(--th-text-3)', fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.06em' }}>
                         {msg.player_name}
@@ -259,10 +342,7 @@ export function MessageThread({
                           onBlur={e  => (e.target.style.borderColor = `${accentColor}44`)}
                         />
                         <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                          <button
-                            onClick={handleEditCancel}
-                            style={{ padding: '4px 12px', borderRadius: 8, background: 'transparent', border: '1px solid var(--th-border)', color: 'var(--th-text-3)', fontSize: '0.70rem', fontWeight: 500, cursor: 'pointer', fontFamily: "'Figtree',system-ui,sans-serif" }}
-                          >
+                          <button onClick={handleEditCancel} style={{ padding: '4px 12px', borderRadius: 8, background: 'transparent', border: '1px solid var(--th-border)', color: 'var(--th-text-3)', fontSize: '0.70rem', fontWeight: 500, cursor: 'pointer', fontFamily: "'Figtree',system-ui,sans-serif" }}>
                             Cancel
                           </button>
                           <button
@@ -278,7 +358,7 @@ export function MessageThread({
                       <div
                         className="mt-bubble"
                         style={{ maxWidth: '84%', borderRadius: isMe ? '14px 14px 4px 14px' : '14px 14px 14px 4px', background: isMe ? `${accentColor}14` : 'var(--th-surface)', border: isMe ? `1px solid ${accentColor}2a` : '1px solid var(--th-border)', overflow: 'hidden' }}
-                        onDoubleClick={() => setReplyTo(msg)}
+                        onDoubleClick={() => handleDoubleClick(msg)}
                         onMouseDown={() => startLongPress(msg)}
                         onMouseUp={cancelLongPress}
                         onMouseLeave={cancelLongPress}
@@ -286,7 +366,6 @@ export function MessageThread({
                         onTouchEnd={cancelLongPress}
                         onTouchMove={cancelLongPress}
                       >
-                        {/* Quoted reply preview */}
                         {repliedMsg && (
                           <div style={{ margin: '8px 10px 0', padding: '6px 10px', borderRadius: 8, background: isMe ? `${accentColor}10` : 'var(--th-surface-2)', borderLeft: `2.5px solid ${accentColor}66`, display: 'flex', flexDirection: 'column', gap: 2 }}>
                             <span style={{ fontFamily: "'Syne',system-ui,sans-serif", color: accentColor, fontSize: '0.55rem', fontWeight: 700, letterSpacing: '0.06em', opacity: 0.8 }}>
@@ -298,47 +377,23 @@ export function MessageThread({
                           </div>
                         )}
 
-                        {/* Message content */}
                         <div style={{ padding: repliedMsg ? '6px 12px 8px' : '8px 12px', color: isMe ? 'var(--th-fg)' : 'var(--th-text-2)', fontSize: '0.82rem', fontWeight: 400, lineHeight: 1.52, wordBreak: 'break-word', fontFamily: "'Figtree',system-ui,sans-serif" }}>
                           {msg.content}
                         </div>
 
-                        {/* Edited badge */}
                         {msg.edited_at && (
                           <div style={{ padding: '0 10px 8px', display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start' }}>
-                            <span style={{
-                              fontFamily:    "'Figtree',system-ui,sans-serif",
-                              fontSize:      '0.52rem',
-                              fontWeight:     500,
-                              fontStyle:     'italic',
-                              color:          isMe ? `${accentColor}88` : 'var(--th-text-3)',
-                              background:     isMe ? `${accentColor}0d` : 'var(--th-surface-2)',
-                              border:        `1px solid ${isMe ? `${accentColor}22` : 'var(--th-border)'}`,
-                              borderRadius:   99,
-                              padding:       '1px 7px',
-                              letterSpacing: '0.04em',
-                              lineHeight:     1.6,
-                            }}>
+                            <span style={{ fontFamily: "'Figtree',system-ui,sans-serif", fontSize: '0.52rem', fontWeight: 500, fontStyle: 'italic', color: isMe ? `${accentColor}88` : 'var(--th-text-3)', background: isMe ? `${accentColor}0d` : 'var(--th-surface-2)', border: `1px solid ${isMe ? `${accentColor}22` : 'var(--th-border)'}`, borderRadius: 99, padding: '1px 7px', letterSpacing: '0.04em', lineHeight: 1.6 }}>
                               edited
                             </span>
                           </div>
                         )}
                       </div>
                     )}
-
-                    {/* Hint labels */}
-                    {!isEditing && (
-                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                        <span style={{ color: 'var(--th-text-4)', fontSize: '0.50rem', fontFamily: "'Figtree',system-ui,sans-serif", opacity: 0.6 }}>
-                          double-click to reply{isMe ? ' · hold to edit' : ''}
-                        </span>
-                      </div>
-                    )}
                   </div>
                 )
               })}
 
-              {/* Typing indicator */}
               {isOtherTyping && (
                 <div className="mt-msg" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3 }}>
                   <div style={{ padding: '10px 14px', borderRadius: '14px 14px 14px 4px', background: 'var(--th-surface)', border: '1px solid var(--th-border)', display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -369,11 +424,7 @@ export function MessageThread({
                 {replyTo.content}
               </span>
             </div>
-            <button
-              onClick={() => setReplyTo(null)}
-              style={{ background: 'none', border: 'none', color: 'var(--th-text-3)', cursor: 'pointer', padding: '0 2px', lineHeight: 1, fontSize: '0.9rem', flexShrink: 0 }}
-              aria-label="Cancel reply"
-            >
+            <button onClick={() => setReplyTo(null)} style={{ background: 'none', border: 'none', color: 'var(--th-text-3)', cursor: 'pointer', padding: '0 2px', lineHeight: 1, fontSize: '0.9rem', flexShrink: 0 }} aria-label="Cancel reply">
               ×
             </button>
           </div>
