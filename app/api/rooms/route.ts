@@ -2,23 +2,29 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient, PoolQuestion } from '@/lib/supabase'
 import { QUESTIONS } from '@/lib/questions'
 
+type GameMode = 'friendly' | 'intimate'
+
+const FRIENDLY_TIERS = new Set(['light', 'medium'])
+
 export async function POST(req: NextRequest) {
   const body = await req.json()
   const player1_name = body?.player1_name?.trim()
+  const mode: GameMode = body?.mode === 'intimate' ? 'intimate' : 'friendly'
 
   if (!player1_name) {
     return NextResponse.json({ error: 'Name is required' }, { status: 400 })
   }
 
-  // Snapshot the current question bank into the room's pool.
-  // questions.ts is only read here. After this point, the session
-  // owns its pool independently. Expanding questions.ts later only
-  // affects new rooms, never in-progress ones.
-  const question_pool: PoolQuestion[] = QUESTIONS.map(q => ({
-    text: q.text,
-    tier: q.tier,
-    isCustom: false,
-  }))
+  // Snapshot the question bank, filtered by mode, into the room's pool.
+  // After this point the session owns its pool independently — changing
+  // questions.ts or mode logic never affects in-progress rooms.
+  const question_pool: PoolQuestion[] = QUESTIONS
+    .filter(q => mode === 'intimate' || FRIENDLY_TIERS.has(q.tier))
+    .map(q => ({
+      text:     q.text,
+      tier:     q.tier,
+      isCustom: false,
+    }))
 
   const supabase = createSupabaseServerClient()
 

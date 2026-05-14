@@ -10,6 +10,8 @@ const TIER_COLORS = ['#4ade80', '#60a5fa', '#f87171', '#c084fc']
 export const SLOT_KEY      = (roomId: string) => `f9q-slot-${roomId}`
 export const LAST_ROOM_KEY = 'f9q-last-room'
 
+type GameMode = 'friendly' | 'intimate'
+
 function Room13Logo({ width = 140, height = 64 }: { width?: number; height?: number }) {
   return (
     <svg width={width} height={height} viewBox="0 0 680 310" fill="none" aria-hidden="true" style={{ flexShrink:0, display:'block' }}>
@@ -81,9 +83,116 @@ function ResumeBanner({ resume, onResume, onDismiss }: {
   )
 }
 
+// ---------------------------------------------------------------------------
+// Mode selector — shown before name entry
+// ---------------------------------------------------------------------------
+
+const MODE_CONFIG: Record<GameMode, {
+  label:       string
+  tagline:     string
+  tiers:       string[]
+  tierColors:  string[]
+  accentColor: string
+  borderColor: string
+  bgColor:     string
+}> = {
+  friendly: {
+    label:       'Friendly',
+    tagline:     'Light & Medium questions only. Safe for anyone.',
+    tiers:       ['Light', 'Medium'],
+    tierColors:  ['#4ade80', '#60a5fa'],
+    accentColor: '#4ade80',
+    borderColor: 'rgba(74,222,128,0.30)',
+    bgColor:     'rgba(74,222,128,0.06)',
+  },
+  intimate: {
+    label:       'Intimate',
+    tagline:     'All four tiers. No limits, no gating.',
+    tiers:       ['Light', 'Medium', 'Deep', 'Spicy'],
+    tierColors:  ['#4ade80', '#60a5fa', '#f87171', '#c084fc'],
+    accentColor: '#c084fc',
+    borderColor: 'rgba(192,132,252,0.30)',
+    bgColor:     'rgba(192,132,252,0.06)',
+  },
+}
+
+function ModeSelector({ value, onChange }: { value: GameMode; onChange: (m: GameMode) => void }) {
+  return (
+    <>
+      <style>{`
+        @keyframes ms-in { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+        .ms-root { animation: ms-in 0.40s cubic-bezier(0.22,1,0.36,1) 0.18s both; }
+        .ms-card {
+          flex: 1;
+          padding: 14px 14px 12px;
+          border-radius: 16px;
+          cursor: pointer;
+          transition: border-color 0.22s ease, background 0.22s ease, transform 0.18s ease;
+          display: flex;
+          flex-direction: column;
+          gap: 7px;
+          position: relative;
+          -webkit-tap-highlight-color: transparent;
+        }
+        .ms-card:active { transform: scale(0.975); }
+      `}</style>
+
+      <div className="ms-root" style={{ width:'100%', marginBottom:20 }}>
+        <div style={{ fontFamily:"'Playfair Display',Georgia,serif", color:'var(--th-text-4)', fontSize:'0.60rem', fontWeight:400, fontStyle:'italic', letterSpacing:'0.12em', marginBottom:10, textAlign:'center' }}>
+          Choose the room&apos;s tone
+        </div>
+
+        <div style={{ display:'flex', gap:10 }}>
+          {(['friendly', 'intimate'] as GameMode[]).map(mode => {
+            const conf    = MODE_CONFIG[mode]
+            const active  = value === mode
+
+            return (
+              <button
+                key={mode}
+                className="ms-card"
+                onClick={() => onChange(mode)}
+                style={{
+                  border:     active ? `1.5px solid ${conf.borderColor}` : '1.5px solid var(--th-border)',
+                  background: active ? conf.bgColor : 'var(--th-surface)',
+                }}
+                aria-pressed={active}
+              >
+                {/* Active indicator dot */}
+                <div style={{ position:'absolute', top:10, right:12, width:7, height:7, borderRadius:'50%', background: active ? conf.accentColor : 'transparent', boxShadow: active ? `0 0 8px ${conf.accentColor}` : 'none', border: active ? 'none' : '1px solid var(--th-border-2)', transition:'all 0.2s ease' }}/>
+
+                {/* Label */}
+                <div style={{ fontFamily:"'Playfair Display',Georgia,serif", color: active ? conf.accentColor : 'var(--th-text-2)', fontSize:'0.88rem', fontWeight:700, letterSpacing:'0.04em', transition:'color 0.2s ease' }}>
+                  {conf.label}
+                </div>
+
+                {/* Tagline */}
+                <div style={{ fontFamily:"'Playfair Display',Georgia,serif", color:'var(--th-text-3)', fontSize:'0.62rem', fontStyle:'italic', lineHeight:1.55, fontWeight:400 }}>
+                  {conf.tagline}
+                </div>
+
+                {/* Tier dots */}
+                <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:2 }}>
+                  {conf.tiers.map((tier, i) => (
+                    <div key={tier} style={{ display:'flex', alignItems:'center', gap:3 }}>
+                      <div style={{ width:5, height:5, borderRadius:'50%', background: conf.tierColors[i], boxShadow: active ? `0 0 5px ${conf.tierColors[i]}` : 'none', opacity: active ? 1 : 0.45, transition:'all 0.2s ease' }}/>
+                      <span style={{ fontFamily:"'Playfair Display',Georgia,serif", color: active ? conf.tierColors[i] : 'var(--th-text-4)', fontSize:'0.52rem', fontStyle:'italic', fontWeight:400, opacity: active ? 0.85 : 0.55, transition:'all 0.2s ease' }}>{tier}</span>
+                    </div>
+                  ))}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    </>
+  )
+}
+
 export default function HomePage() {
   const router = useRouter()
   const [name,    setName]    = useState('')
+  const [mode,    setMode]    = useState<GameMode>('friendly')
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState<string | null>(null)
   const [resume,  setResume]  = useState<ResumeState>({ status: 'checking' })
@@ -115,7 +224,11 @@ export default function HomePage() {
     const trimmed = name.trim()
     if (!trimmed || loading) return
     setLoading(true); setError(null)
-    const res = await fetch('/api/rooms', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ player1_name:trimmed }) })
+    const res = await fetch('/api/rooms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ player1_name: trimmed, mode }),
+    })
     if (!res.ok) { setLoading(false); setError('Could not create room. Try again.'); return }
     const { roomId } = await res.json()
     try { localStorage.setItem(SLOT_KEY(roomId), '1'); localStorage.setItem(LAST_ROOM_KEY, roomId) } catch {}
@@ -202,7 +315,7 @@ export default function HomePage() {
             <Room13Logo width={180} height={82}/>
           </div>
 
-          {/* Game name — Playfair Display */}
+          {/* Game name */}
           <div className="hp-t1" style={{ textAlign:'center', marginBottom:4 }}>
             <h1 style={{ fontFamily:"'Playfair Display',Georgia,serif", color:'var(--th-text-1)', fontSize:'2.6rem', fontWeight:700, letterSpacing:'0.08em', lineHeight:1, margin:0 }}>
               Room 13
@@ -224,7 +337,7 @@ export default function HomePage() {
             <div style={{ flex:1, height:1, background:'linear-gradient(to left,transparent,var(--th-border-2))' }}/>
           </div>
 
-          {/* Tagline — Playfair italic */}
+          {/* Tagline */}
           <div className="hp-t2" style={{ textAlign:'center', marginBottom:10 }}>
             <p style={{ fontFamily:"'Playfair Display',Georgia,serif", color:'var(--th-text-1)', fontSize:'1.50rem', fontWeight:400, fontStyle:'italic', lineHeight:1.3, margin:0 }}>
               Every card a different world.
@@ -252,6 +365,9 @@ export default function HomePage() {
             {resume.status === 'found' && (
               <ResumeBanner resume={resume} onResume={handleResume} onDismiss={handleDismiss}/>
             )}
+
+            {/* Mode selector — before name/enter */}
+            <ModeSelector value={mode} onChange={setMode} />
 
             <div style={{ position:'relative', marginBottom:12 }}>
               <input

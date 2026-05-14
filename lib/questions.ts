@@ -33,9 +33,29 @@ export const QUESTIONS: Question[] = [
   { text: "Think of a moment where someone said something and you had the perfect reply — two hours later. What was the situation?", tier: 'light' },
   { text: "What's something you're quietly better at than most people, but rarely lead with?", tier: 'light' },
 
-  // Layer B — meta-cognitive: questions about how you answer questions.
-  // Rewritten for cold-read clarity: dispositional framing instead of situational self-reference.
-  // Each works standalone, no prior priming required.
+  // Layer A — amusing additions
+  { text: "What's the most unhinged thing you've Googled in the last month that you'd have to explain in full context to not seem concerning?", tier: 'light' },
+  { text: "If your brain had a browser history visible to everyone in this room right now — what's the first tab you'd close?", tier: 'light' },
+  { text: "What's a food combination you eat in private that you'd defend aggressively if caught?", tier: 'light' },
+  { text: "You've done something that made complete sense to you in the moment but looked unhinged from the outside — what was it?", tier: 'light' },
+  { text: "What's the pettiest, most disproportionate thing you've ever done in response to a minor inconvenience — and do you regret it?", tier: 'light' },
+  { text: "If your internal monologue was suddenly broadcast out loud for thirty seconds right now, what's the room hearing?", tier: 'light' },
+  { text: "What's a lie you told that escalated way beyond what you planned and you just had to keep going?", tier: 'light' },
+  { text: "You had one job. One. What did you spectacularly fail at?", tier: 'light' },
+  { text: "What's the most embarrassing autocorrect, wrong-number, or sent-to-the-wrong-person disaster you've lived through?", tier: 'light' },
+  { text: "What's something you did as a child that, looking back, was genuinely unhinged behaviour disguised as innocence?", tier: 'light' },
+  { text: "If someone followed you around with a camera for a full week, what moment would make the most chaotic highlight reel?", tier: 'light' },
+  { text: "What's a completely irrational fear you have that you cannot logic your way out of no matter how hard you try?", tier: 'light' },
+  { text: "What's the weirdest thing you've ever convinced yourself was a sign from the universe — and did you act on it?", tier: 'light' },
+  { text: "You got away with something and you know you got away with it. What was it?", tier: 'light' },
+  { text: "What's a fictional character — from anything — whose decisions you understand on a deeply personal level that you probably shouldn't?", tier: 'light' },
+  { text: "What's the most chaotic energy decision you've made that somehow worked out perfectly?", tier: 'light' },
+  { text: "What's something you've dramatically overreacted to that, in retrospect, deserved about fifteen percent of the reaction you gave it?", tier: 'light' },
+  { text: "What's a phase you went through that your current self would struggle to explain without laughing nervously?", tier: 'light' },
+  { text: "If the people in this room pooled their worst habits together, which one of yours would absolutely make the final list?", tier: 'light' },
+  { text: "What's an opinion you hold that you know is objectively wrong but you will defend anyway because it's too late to change now?", tier: 'light' },
+
+  // Layer B — meta-cognitive
   { text: "When someone asks you something personal and you feel yourself pause before answering — what are you actually deciding in that pause? What stays in, and what gets quietly cut?", tier: 'light' },
   { text: "What kinds of honest answers do you tend to swap for safer ones in conversation — not lies exactly, just the version that won't start something?", tier: 'light' },
   { text: "There's usually a gap between your first instinct and the answer you actually say out loud. What tends to happen in that gap — what gets changed, and why?", tier: 'light' },
@@ -112,6 +132,28 @@ export const QUESTIONS: Question[] = [
   { text: "There's a side of you that only shows up under very specific conditions. What has to be present for it to appear?", tier: 'medium' },
   { text: "Has someone ever made you feel genuinely seen — not just noticed, but actually understood? What made that moment different?", tier: 'medium' },
 
+  // Medium — amusing additions
+  { text: "What's a completely unserious personality trait of yours that has, at some point, caused a genuinely serious problem?", tier: 'medium' },
+  { text: "What's the most elaborate justification you've ever constructed in your head to avoid doing something you simply did not want to do?", tier: 'medium' },
+  { text: "You've been caught in a lie that wasn't even worth telling — the stakes were essentially zero and yet there you were. What happened?", tier: 'medium' },
+  { text: "What's something you've confidently said or done in front of people that you later discovered was completely wrong — and how long were you wrong before someone told you?", tier: 'medium' },
+  { text: "What's the most disproportionately invested you've ever gotten in something that absolutely did not deserve that level of emotional energy from you?", tier: 'medium' },
+  { text: "Is there a running joke about you among your friends that you laugh at but is also slightly too accurate to be fully comfortable?", tier: 'medium' },
+  { text: "What's a habit or quirk of yours that you've successfully hidden from most people — not because it's dark, just because it's deeply embarrassing?", tier: 'medium' },
+  { text: "You've made a decision that looked insane to everyone else but made perfect sense to you — what was the internal logic you were working from?", tier: 'medium' },
+  { text: "What's something you're oddly, unnecessarily judgmental about — a preference, a behavior, a choice — that you know says more about you than them?", tier: 'medium' },
+  { text: "What's the worst way you've ever accidentally revealed something about yourself that you were trying to keep private?", tier: 'medium' },
+  { text: "What's a genuinely unhinged opinion you have about something completely low-stakes — food, movies, how people walk — that you hold with more conviction than most things in your life?", tier: 'medium' },
+  { text: "What's a completely avoidable situation you've found yourself in more than twice because you refused to learn the obvious lesson the first time?", tier: 'medium' },
+  { text: "What's the most charismatic you've ever been in a moment that, objectively, you had no business being charismatic in?", tier: 'medium' },
+  { text: "What's a very specific, niche thing that makes you irrationally happy — like a particular kind of weather, or a very specific type of silence — that would be hard to explain to someone without sounding unwell?", tier: 'medium' },
+  { text: "You've definitely been the chaos in someone else's story at some point. What version of events do you think they're telling?", tier: 'medium' },
+  { text: "What's something you're quietly, genuinely bad at that you've managed to avoid being fully exposed for — so far?", tier: 'medium' },
+  { text: "What's a recurring situation where you know exactly how you should handle it, watch yourself not do that, and then have to explain it to yourself afterward?", tier: 'medium' },
+  { text: "What's the most embarrassing thing you've ever been caught doing that required a real-time explanation to get out of — and did the explanation actually work?", tier: 'medium' },
+  { text: "What's something you say you don't care about that your behavior makes extremely clear you actually do?", tier: 'medium' },
+  { text: "You have a type — in friends, in partners, in people you gravitate toward — and at least part of that type is genuinely a bad idea. What's the part you keep ignoring?", tier: 'medium' },
+
   // ─── DEEP ─────────────────────────────────────────────────────────────────────
   { text: "Is there a version of your life that almost happened — a different city, a different choice, a different person — that you still find yourself thinking about?", tier: 'deep' },
   { text: "What's something you know you want, clearly and specifically, but haven't actually allowed yourself to pursue?", tier: 'deep' },
@@ -141,7 +183,7 @@ export const QUESTIONS: Question[] = [
   { text: "What's the part of yourself you keep most hidden — and what actually is it? Not a flaw, not a weakness. What?", tier: 'deep' },
 
   // ─── SPICY ────────────────────────────────────────────────────────────────────
-  // Layer A — abstract desire: direct, internal, fantasy-forward
+  // Layer A — abstract desire
   { text: "What's the most inappropriate person you've had a genuinely dirty thought about — not a stranger, but someone who would complicate things if they knew?", tier: 'spicy' },
   { text: "What's something you've fantasised about in detail but have never had the nerve to actually ask for?", tier: 'spicy' },
   { text: "How loud do you actually get when you're completely in it — and does anyone know that about you?", tier: 'spicy' },
@@ -170,8 +212,7 @@ export const QUESTIONS: Question[] = [
   { text: "What signals tell you, instantly, that there's genuine chemistry with someone — not surface-level interest, but that specific electricity?", tier: 'spicy' },
   { text: "Someone calls your bluff in a charged moment — they know you want something you haven't admitted. What were you trying to hide, and does being called out make it worse or better?", tier: 'spicy' },
 
-  // Layer B — micro-scenarios: specific, sensory, situational.
-  // These paint a scene and ask you to place yourself inside it.
+  // Layer B — micro-scenarios
   { text: "You're sitting close to someone and your legs brush once. It wasn't an accident on their part and you both know it — do you shift away, or do you let it happen again?", tier: 'spicy' },
   { text: "Someone you're attracted to lowers their voice in a crowded room so only you can hear them. What does that do to your ability to focus on what they're actually saying?", tier: 'spicy' },
   { text: "You're dancing with someone and it shifts — not dramatically, but the energy changes and suddenly it's clearly intentional. What's the exact moment you feel that line cross?", tier: 'spicy' },
@@ -213,8 +254,7 @@ export const QUESTIONS: Question[] = [
   { text: "There's a version of you that doesn't second-guess in these situations, doesn't hold back, just acts. How different is that person from who you are right now?", tier: 'spicy' },
   { text: "You feel the shift — it's no longer playful, it's moved into something with real weight. What do you actually do with that feeling?", tier: 'spicy' },
 
-  // Layer C — explicit interior: raw desire named directly, graphic fantasy,
-  // physical specificity. No tension-framing, no buildup. Just the thing itself.
+  // Layer C — explicit interior
   { text: "What's a sex act you've never done but think about more than you'd admit — not as a vague category, but as a specific, detailed scenario you've played out in your head?", tier: 'spicy' },
   { text: "Where on your body, if someone touched it the right way at the right moment, would make it almost impossible for you to stay composed?", tier: 'spicy' },
   { text: "What's the filthiest thing you've ever said out loud during sex — and did saying it surprise even you?", tier: 'spicy' },
