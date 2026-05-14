@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { Room13Logo, BrandWatermark } from './BrandWatermark'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useTheme } from '@/context/ThemeContext'
@@ -33,11 +34,27 @@ export function JoinScreen({ onJoin, loading }: JoinScreenProps) {
           75% { color:#c084fc; filter:drop-shadow(0 0 18px rgba(192,132,252,0.70)); }
           100%{ color:#4ade80; filter:drop-shadow(0 0 18px rgba(74,222,128,0.70));  }
         }
+        @keyframes js-host-in { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
 
         .js-root       { animation: js-in         0.45s cubic-bezier(0.22,1,0.36,1) both; }
         .js-logo-in    { animation: js-logo-in     0.60s cubic-bezier(0.22,1,0.36,1) 0.06s both; }
         .js-logo-cycle { animation: js-logo-cycle  7s   ease-in-out infinite; }
         .js-shimmer    { animation: js-shimmer      2.8s ease-in-out infinite; }
+        .js-host-in    { animation: js-host-in     0.40s cubic-bezier(0.22,1,0.36,1) 0.55s both; }
+
+        .js-host-link {
+          color: var(--th-text-4);
+          text-decoration: none;
+          font-family: 'Playfair Display', Georgia, serif;
+          font-size: 0.74rem;
+          font-style: italic;
+          font-weight: 400;
+          transition: color 0.2s ease;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+        }
+        .js-host-link:hover { color: var(--th-text-3); }
       `}</style>
 
       <div style={{ position: 'fixed', top: 18, right: 20, zIndex: 9999 }}>
@@ -100,6 +117,16 @@ export function JoinScreen({ onJoin, loading }: JoinScreenProps) {
             )}
             {loading ? 'entering room 13...' : 'join game'}
           </button>
+
+          {/* Option B — pre-join host nudge */}
+          <div className="js-host-in" style={{ marginTop: 20, display: 'flex', justifyContent: 'center' }}>
+            <Link href="/" className="js-host-link">
+              Want to host your own game instead?
+              <svg width="11" height="11" viewBox="0 0 14 14" fill="none">
+                <path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </Link>
+          </div>
         </div>
 
         <BrandWatermark />
