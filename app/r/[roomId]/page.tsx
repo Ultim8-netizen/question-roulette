@@ -1,6 +1,7 @@
 'use client'
 
 import { useParams }      from 'next/navigation'
+import { useRouter }      from 'next/navigation'
 import { useRoomState }   from './exits/hooks/useRoomState'
 import { JoinScreen }     from './_components/JoinScreen'
 import { WaitingScreen }  from './_components/WaitingScreen'
@@ -18,6 +19,7 @@ import { QuestionGrid }   from '@/components/QuestionGrid'
 import { DrawButton }     from '@/components/DrawButton'
 import { PickModal }      from '@/components/PickModal'
 import { ThemeToggle }    from '@/components/ThemeToggle'
+import type { PlayerSlot } from '@/lib/supabase'
 import Link               from 'next/link'
 import { useState }       from 'react'
 
@@ -39,12 +41,12 @@ function LoadingSpinner() {
         gap:             20,
       }}>
         <div style={{
-          width:       28,
-          height:      28,
-          borderRadius:'50%',
-          border:      '2px solid var(--th-border-2)',
+          width:          28,
+          height:         28,
+          borderRadius:   '50%',
+          border:         '2px solid var(--th-border-2)',
           borderTopColor: 'var(--th-text-3)',
-          animation:   'spin 0.8s linear infinite',
+          animation:      'spin 0.8s linear infinite',
         }} />
         <BrandWatermark />
       </div>
@@ -53,8 +55,278 @@ function LoadingSpinner() {
 }
 
 // ---------------------------------------------------------------------------
-// GuestHostBanner — Option A: persistent bottom banner for guests.
-// Appears after 5 cards drawn. Sits above the DrawButton tray.
+// GameEndedScreen — full-screen overlay shown to both players on agreement
+// ---------------------------------------------------------------------------
+
+function GameEndedScreen({
+  p1Name, p2Name, cardsDrawn, mySlot,
+}: {
+  p1Name:     string
+  p2Name:     string
+  cardsDrawn: number
+  mySlot:     PlayerSlot
+}) {
+  const router = useRouter()
+
+  const myName    = mySlot === 1 ? p1Name : p2Name
+  const otherName = mySlot === 1 ? p2Name : p1Name
+
+  return (
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&family=Figtree:wght@300;400;500;600&display=swap');
+
+        @keyframes ge-in    { from{opacity:0} to{opacity:1} }
+        @keyframes ge-card  { from{opacity:0;transform:translateY(32px) scale(0.95)} to{opacity:1;transform:translateY(0) scale(1)} }
+        @keyframes ge-dot-1 { 0%,100%{transform:scale(1);opacity:0.40} 50%{transform:scale(1.30);opacity:1} }
+        @keyframes ge-dot-2 { 0%,100%{transform:scale(1);opacity:0.40} 50%{transform:scale(1.30);opacity:1} }
+        @keyframes ge-dot-3 { 0%,100%{transform:scale(1);opacity:0.40} 50%{transform:scale(1.30);opacity:1} }
+        @keyframes ge-dot-4 { 0%,100%{transform:scale(1);opacity:0.40} 50%{transform:scale(1.30);opacity:1} }
+
+        .ge-backdrop { animation: ge-in   0.35s ease both; }
+        .ge-card     { animation: ge-card 0.52s cubic-bezier(0.22,1,0.36,1) 0.10s both; }
+        .ge-dot-1    { animation: ge-dot-1 2.8s ease-in-out 0.0s infinite; }
+        .ge-dot-2    { animation: ge-dot-2 2.8s ease-in-out 0.3s infinite; }
+        .ge-dot-3    { animation: ge-dot-3 2.8s ease-in-out 0.6s infinite; }
+        .ge-dot-4    { animation: ge-dot-4 2.8s ease-in-out 0.9s infinite; }
+
+        .ge-home-btn {
+          width: 100%;
+          height: 52px;
+          border-radius: 16px;
+          background: var(--th-surface);
+          border: 1px solid var(--th-border-2);
+          color: var(--th-text-1);
+          font-family: 'Figtree', system-ui, sans-serif;
+          font-size: 0.92rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: background 0.2s ease, transform 0.18s ease;
+          letter-spacing: 0.02em;
+        }
+        .ge-home-btn:hover {
+          background: var(--th-surface-2);
+          transform: translateY(-1px);
+        }
+        .ge-home-btn:active { transform: scale(0.98); }
+      `}</style>
+
+      <div
+        className="ge-backdrop"
+        style={{
+          position:        'fixed',
+          inset:            0,
+          zIndex:           100,
+          background:      'var(--th-overlay)',
+          backdropFilter:  'blur(14px)',
+          WebkitBackdropFilter: 'blur(14px)',
+          display:         'flex',
+          alignItems:      'center',
+          justifyContent:  'center',
+          padding:         '24px 20px',
+          fontFamily:      "'Figtree', system-ui, sans-serif",
+        }}
+      >
+        <div className="ge-card" style={{ width:'100%', maxWidth:360, display:'flex', flexDirection:'column', gap:0 }}>
+
+          {/* Card */}
+          <div style={{
+            background:   'var(--th-surface)',
+            border:       '1px solid var(--th-border-2)',
+            borderRadius: 24,
+            padding:      '32px 26px 28px',
+            boxShadow:    '0 24px 64px rgba(0,0,0,0.24)',
+            display:      'flex',
+            flexDirection:'column',
+            alignItems:   'center',
+            gap:           0,
+            marginBottom: 14,
+          }}>
+
+            {/* Tier dots */}
+            <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:28 }}>
+              {['#4ade80','#60a5fa','#f87171','#c084fc'].map((c, i) => (
+                <div
+                  key={c}
+                  className={`ge-dot-${i+1}`}
+                  style={{ width:7, height:7, borderRadius:'50%', background:c, boxShadow:`0 0 8px ${c}99` }}
+                />
+              ))}
+            </div>
+
+            {/* Heading */}
+            <div style={{
+              fontFamily:    "'Syne', system-ui, sans-serif",
+              color:         'var(--th-text-4)',
+              fontSize:      '0.58rem',
+              fontWeight:     700,
+              letterSpacing: '0.20em',
+              textTransform: 'uppercase',
+              marginBottom:   10,
+            }}>
+              Session complete
+            </div>
+
+            <h2 style={{
+              fontFamily:  "'Syne', system-ui, sans-serif",
+              color:       'var(--th-text-1)',
+              fontSize:    '1.8rem',
+              fontWeight:   700,
+              lineHeight:   1.15,
+              textAlign:   'center',
+              marginBottom: 8,
+            }}>
+              That&apos;s a wrap.
+            </h2>
+
+            <p style={{
+              fontFamily:  "'Figtree', system-ui, sans-serif",
+              color:       'var(--th-text-3)',
+              fontSize:    '0.84rem',
+              fontStyle:   'italic',
+              textAlign:   'center',
+              lineHeight:   1.65,
+              marginBottom: 28,
+            }}>
+              Both of you agreed to end the session.
+            </p>
+
+            {/* Divider */}
+            <div style={{ width:'100%', height:1, background:'var(--th-border)', marginBottom:22 }}/>
+
+            {/* Players */}
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:14, marginBottom:22 }}>
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:5 }}>
+                <div style={{ width:36, height:36, borderRadius:'50%', background:'var(--th-surface-2)', border:'1px solid var(--th-border-2)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:"'Syne',system-ui,sans-serif", color:'var(--th-text-1)', fontSize:'0.70rem', fontWeight:700 }}>
+                  {myName.charAt(0).toUpperCase()}
+                </div>
+                <span style={{ fontFamily:"'Figtree',system-ui,sans-serif", color:'var(--th-text-2)', fontSize:'0.72rem' }}>
+                  {myName}
+                  <span style={{ color:'var(--th-text-4)', fontSize:'0.60rem', marginLeft:4 }}>you</span>
+                </span>
+              </div>
+
+              <span style={{ color:'var(--th-text-4)', fontSize:'0.72rem', fontFamily:"'Syne',system-ui,sans-serif", fontWeight:700 }}>×</span>
+
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:5 }}>
+                <div style={{ width:36, height:36, borderRadius:'50%', background:'var(--th-surface-2)', border:'1px solid var(--th-border)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:"'Syne',system-ui,sans-serif", color:'var(--th-text-2)', fontSize:'0.70rem', fontWeight:700 }}>
+                  {otherName.charAt(0).toUpperCase()}
+                </div>
+                <span style={{ fontFamily:"'Figtree',system-ui,sans-serif", color:'var(--th-text-3)', fontSize:'0.72rem' }}>
+                  {otherName}
+                </span>
+              </div>
+            </div>
+
+            {/* Stats */}
+            <div style={{
+              width:        '100%',
+              padding:      '12px 16px',
+              borderRadius:  12,
+              background:   'var(--th-bg-alt)',
+              border:       '1px solid var(--th-border)',
+              display:      'flex',
+              alignItems:   'center',
+              justifyContent:'space-between',
+            }}>
+              <span style={{ fontFamily:"'Figtree',system-ui,sans-serif", color:'var(--th-text-3)', fontSize:'0.72rem' }}>
+                Cards drawn this session
+              </span>
+              <span style={{ fontFamily:"'Syne',system-ui,sans-serif", color:'var(--th-text-1)', fontSize:'1.1rem', fontWeight:700 }}>
+                {cardsDrawn}
+              </span>
+            </div>
+          </div>
+
+          {/* Home button */}
+          <button className="ge-home-btn" onClick={() => router.push('/')}>
+            Return home
+          </button>
+
+          {/* Subtle watermark */}
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:5, marginTop:16, opacity:0.15, userSelect:'none', pointerEvents:'none' }}>
+            <span style={{ fontFamily:"'Syne',system-ui,sans-serif", fontSize:'0.52rem', color:'var(--th-brand)', letterSpacing:'0.18em', textTransform:'lowercase' }}>
+              abyssprotocol · room 13
+            </span>
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// EndGameConsentBanner — shown to the non-proposing player
+// ---------------------------------------------------------------------------
+
+function EndGameConsentBanner({
+  proposerSlot, p1Name, p2Name, onAccept, onDecline,
+}: {
+  proposerSlot: PlayerSlot
+  p1Name:       string
+  p2Name:       string
+  onAccept:     () => void
+  onDecline:    () => void
+}) {
+  const proposerName = proposerSlot === 1 ? p1Name : p2Name
+
+  return (
+    <>
+      <style>{`
+        @keyframes egcb-in { from{opacity:0;transform:translateY(-10px)} to{opacity:1;transform:translateY(0)} }
+        .egcb-root { animation: egcb-in 0.32s cubic-bezier(0.22,1,0.36,1) both; font-family:'Figtree',system-ui,sans-serif; }
+      `}</style>
+      <div className="egcb-root" style={{ margin:'12px 16px 0', borderRadius:18, background:'var(--th-surface)', border:'1px solid rgba(248,113,113,0.22)', boxShadow:'0 4px 24px rgba(248,113,113,0.08)', padding:'16px 18px' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+          <div style={{ width:7, height:7, borderRadius:'50%', background:'#f87171', boxShadow:'0 0 8px #f87171', flexShrink:0 }}/>
+          <span style={{ fontFamily:"'Syne',system-ui,sans-serif", color:'var(--th-text-3)', fontSize:'0.64rem', fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase' }}>End session request</span>
+        </div>
+
+        <p style={{ fontFamily:"'Figtree',system-ui,sans-serif", color:'var(--th-text-2)', fontSize:'0.88rem', lineHeight:1.55, marginBottom:6 }}>
+          <strong style={{ color:'var(--th-text-1)' }}>{proposerName}</strong> wants to end the session.
+        </p>
+        <p style={{ fontFamily:"'Figtree',system-ui,sans-serif", color:'var(--th-text-3)', fontSize:'0.76rem', fontStyle:'italic', lineHeight:1.55, marginBottom:16 }}>
+          Both players must agree. Declined keeps the game going.
+        </p>
+
+        <div style={{ display:'flex', gap:8 }}>
+          <button
+            onClick={onDecline}
+            style={{ flex:1, height:42, borderRadius:11, background:'transparent', border:'1px solid var(--th-border)', color:'var(--th-text-3)', fontSize:'0.78rem', fontWeight:500, cursor:'pointer', fontFamily:"'Figtree',system-ui,sans-serif", transition:'border-color 0.15s ease,color 0.15s ease' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor='var(--th-border-2)'; (e.currentTarget as HTMLButtonElement).style.color='var(--th-text-2)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor='var(--th-border)'; (e.currentTarget as HTMLButtonElement).style.color='var(--th-text-3)' }}
+          >
+            Keep playing
+          </button>
+          <button
+            onClick={onAccept}
+            style={{ flex:2, height:42, borderRadius:11, background:'rgba(248,113,113,0.10)', border:'1px solid rgba(248,113,113,0.28)', color:'#f87171', fontSize:'0.78rem', fontWeight:600, cursor:'pointer', fontFamily:"'Figtree',system-ui,sans-serif", transition:'background 0.15s ease' }}
+            onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.background = 'rgba(248,113,113,0.16)')}
+            onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.background = 'rgba(248,113,113,0.10)')}
+          >
+            End session
+          </button>
+        </div>
+      </div>
+    </>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// PendingEndGameNotice — shown to the proposing player while waiting
+// ---------------------------------------------------------------------------
+
+function PendingEndGameNotice() {
+  return (
+    <div style={{ margin:'12px 16px 0', padding:'10px 16px', borderRadius:12, background:'var(--th-surface)', border:'1px solid var(--th-border)', fontFamily:"'Figtree',system-ui,sans-serif", color:'var(--th-text-3)', fontSize:'0.72rem', display:'flex', alignItems:'center', gap:8 }}>
+      <div style={{ width:5, height:5, borderRadius:'50%', background:'#f87171', boxShadow:'0 0 6px #f87171', flexShrink:0 }}/>
+      Waiting for them to accept the end request...
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// GuestHostBanner
 // ---------------------------------------------------------------------------
 
 function GuestHostBanner() {
@@ -64,94 +336,22 @@ function GuestHostBanner() {
   return (
     <>
       <style>{`
-        @keyframes ghb-in {
-          from { opacity: 0; transform: translateY(10px); }
-          to   { opacity: 1; transform: translateY(0);    }
-        }
-        .ghb-root {
-          animation: ghb-in 0.40s cubic-bezier(0.22,1,0.36,1) both;
-          font-family: 'Figtree', system-ui, sans-serif;
-        }
-        .ghb-link {
-          color: var(--th-text-2);
-          text-decoration: none;
-          font-size: 0.76rem;
-          font-weight: 500;
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          transition: color 0.18s ease;
-          white-space: nowrap;
-        }
-        .ghb-link:hover { color: var(--th-text-1); }
-        .ghb-dismiss {
-          background: none;
-          border: none;
-          color: var(--th-text-4);
-          cursor: pointer;
-          font-size: 1rem;
-          line-height: 1;
-          padding: 0 2px;
-          flex-shrink: 0;
-          transition: color 0.15s ease;
-        }
-        .ghb-dismiss:hover { color: var(--th-text-3); }
+        @keyframes ghb-in { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+        .ghb-root { animation: ghb-in 0.40s cubic-bezier(0.22,1,0.36,1) both; font-family:'Figtree',system-ui,sans-serif; }
+        .ghb-link { color:var(--th-text-2);text-decoration:none;font-size:0.76rem;font-weight:500;display:inline-flex;align-items:center;gap:4px;transition:color 0.18s ease;white-space:nowrap; }
+        .ghb-link:hover { color:var(--th-text-1); }
+        .ghb-dismiss { background:none;border:none;color:var(--th-text-4);cursor:pointer;font-size:1rem;line-height:1;padding:0 2px;flex-shrink:0;transition:color 0.15s ease; }
+        .ghb-dismiss:hover { color:var(--th-text-3); }
       `}</style>
-
-      {/* Fixed strip that sits just above the DrawButton tray.
-          DrawButton tray is ~100px tall (64px button + padding).
-          We sit at bottom: 106px so we never overlap the button itself. */}
-      <div
-        className="ghb-root"
-        style={{
-          position:       'fixed',
-          bottom:          106,
-          left:            0,
-          right:           0,
-          zIndex:          35,
-          display:        'flex',
-          justifyContent: 'center',
-          padding:        '0 16px',
-          pointerEvents:  'none',
-        }}
-      >
-        <div
-          style={{
-            pointerEvents:  'auto',
-            display:        'flex',
-            alignItems:     'center',
-            justifyContent: 'space-between',
-            gap:             12,
-            width:           '100%',
-            maxWidth:        390,
-            padding:        '10px 14px',
-            borderRadius:    12,
-            background:     'var(--th-surface)',
-            border:         '1px solid var(--th-border-2)',
-            boxShadow:      '0 4px 20px rgba(0,0,0,0.14)',
-          }}
-        >
-          {/* dot */}
-          <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--th-text-4)', flexShrink: 0 }} />
-
-          <span style={{ color: 'var(--th-text-3)', fontSize: '0.74rem', fontFamily: "'Figtree',system-ui,sans-serif", flex: 1, lineHeight: 1.4 }}>
-            Enjoying this?
-          </span>
-
+      <div className="ghb-root" style={{ position:'fixed', bottom:106, left:0, right:0, zIndex:35, display:'flex', justifyContent:'center', padding:'0 16px', pointerEvents:'none' }}>
+        <div style={{ pointerEvents:'auto', display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, width:'100%', maxWidth:390, padding:'10px 14px', borderRadius:12, background:'var(--th-surface)', border:'1px solid var(--th-border-2)', boxShadow:'0 4px 20px rgba(0,0,0,0.14)' }}>
+          <div style={{ width:5, height:5, borderRadius:'50%', background:'var(--th-text-4)', flexShrink:0 }}/>
+          <span style={{ color:'var(--th-text-3)', fontSize:'0.74rem', flex:1, lineHeight:1.4 }}>Enjoying this?</span>
           <Link href="/" className="ghb-link">
             Host your own room
-            <svg width="11" height="11" viewBox="0 0 14 14" fill="none">
-              <path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+            <svg width="11" height="11" viewBox="0 0 14 14" fill="none"><path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </Link>
-
-          <button
-            className="ghb-dismiss"
-            onClick={() => setDismissed(true)}
-            aria-label="Dismiss"
-          >
-            ×
-          </button>
+          <button className="ghb-dismiss" onClick={() => setDismissed(true)} aria-label="Dismiss">×</button>
         </div>
       </div>
     </>
@@ -167,18 +367,21 @@ export default function RoomPage() {
   const roomId = params.roomId as string
 
   const [proposeOpen, setProposeOpen] = useState(false)
+  // Two-tap confirm for "End session" — first tap arms, second tap fires.
+  const [endConfirm,  setEndConfirm]  = useState(false)
 
   const {
     room, mySlot, needsJoin, hasBothPlayers, currentTurn, cards, activePick,
     pendingProposal, messages, toast, unreadCardIndices, myPersonalUrl,
     joinLoading, drawLoading, proposeLoading, consentLoading, isSendingMessage,
     channelStatus, otherIsTyping, otherTypingIndex,
+    endGameProposal, gameEnded,
     handleJoin, handleDraw, handleOpenCard, handleCloseCard,
     handlePropose, handleConsent, handleSendMessage, handleEditMessage,
-    handleTyping, clearToast,
+    handleTyping, handleProposeEnd, handleEndGameConsent, clearToast,
   } = useRoomState(roomId)
 
-  const isMyTurn  = mySlot !== null && currentTurn === mySlot
+  const isMyTurn   = mySlot !== null && currentTurn === mySlot
   const canPropose = !pendingProposal
 
   const shareUrl =
@@ -194,8 +397,15 @@ export default function RoomPage() {
     ? `f9q-draft-${roomId}-${activePick.questionIndex}`
     : ''
 
-  // Option A: show banner for guests after 5 cards drawn
   const showGuestHostBanner = mySlot === 2 && hasBothPlayers && cards.length >= 5
+
+  // Whether the "End session" trigger row should be visible.
+  // Hidden when: a proposal is already in flight, or we're the responder
+  // of an incoming end request (the banner handles that case).
+  const showEndSessionTrigger =
+    hasBothPlayers &&
+    endGameProposal === null &&
+    !gameEnded
 
   // ── Early returns ──────────────────────────────────────────────────────
 
@@ -205,16 +415,22 @@ export default function RoomPage() {
 
   // ── Main game render ───────────────────────────────────────────────────
 
-  const showCoachTip = hasBothPlayers && cards.length === 0 && !pendingProposal
+  const showCoachTip = hasBothPlayers && cards.length === 0 && !pendingProposal && !endGameProposal
 
   return (
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=DM+Sans:wght@300;400;500&display=swap');
         * { box-sizing: border-box; }
+
+        @keyframes es-arm {
+          from { opacity:0; transform:translateY(4px); }
+          to   { opacity:1; transform:translateY(0);   }
+        }
+        .es-armed { animation: es-arm 0.22s ease both; }
       `}</style>
 
-      <main style={{ minHeight: '100dvh', background: 'var(--th-bg)', paddingBottom: 140 }}>
+      <main style={{ minHeight:'100dvh', background:'var(--th-bg)', paddingBottom:140 }}>
 
         <PlayerHeader
           p1Name={p1Name}
@@ -236,6 +452,7 @@ export default function RoomPage() {
           <CoachTip isMyTurn={isMyTurn} drawerName={drawerName} />
         )}
 
+        {/* Question-proposal consent */}
         {pendingProposal && pendingProposal.proposedBy !== mySlot && (
           <ConsentBanner
             proposal={pendingProposal}
@@ -246,7 +463,23 @@ export default function RoomPage() {
         )}
         {pendingProposal && pendingProposal.proposedBy === mySlot && <PendingNotice />}
 
-        <div style={{ height: 16 }} />
+        {/* End-game consent — responder sees the banner */}
+        {endGameProposal !== null && endGameProposal !== mySlot && (
+          <EndGameConsentBanner
+            proposerSlot={endGameProposal}
+            p1Name={p1Name}
+            p2Name={p2Name}
+            onAccept={() => handleEndGameConsent(true)}
+            onDecline={() => handleEndGameConsent(false)}
+          />
+        )}
+
+        {/* End-game pending — proposer waits */}
+        {endGameProposal !== null && endGameProposal === mySlot && (
+          <PendingEndGameNotice />
+        )}
+
+        <div style={{ height:16 }} />
 
         <QuestionGrid
           cards={cards}
@@ -254,12 +487,62 @@ export default function RoomPage() {
           unreadIndices={unreadCardIndices}
         />
 
-        <div style={{ paddingBottom: 8 }}>
+        {/* ── End session trigger ── */}
+        {showEndSessionTrigger && (
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', padding:'4px 16px 8px' }}>
+            {!endConfirm ? (
+              <button
+                onClick={() => setEndConfirm(true)}
+                style={{
+                  background:    'none',
+                  border:        'none',
+                  padding:       '6px 12px',
+                  cursor:        'pointer',
+                  color:         'var(--th-text-4)',
+                  fontSize:      '0.68rem',
+                  fontFamily:    "'DM Sans',system-ui,sans-serif",
+                  letterSpacing: '0.04em',
+                  transition:    'color 0.2s ease',
+                }}
+                onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.color='var(--th-text-3)')}
+                onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.color='var(--th-text-4)')}
+              >
+                End session
+              </button>
+            ) : (
+              <div className="es-armed" style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 14px', borderRadius:12, background:'var(--th-surface)', border:'1px solid rgba(248,113,113,0.22)' }}>
+                <div style={{ width:5, height:5, borderRadius:'50%', background:'#f87171', flexShrink:0 }}/>
+                <span style={{ fontFamily:"'DM Sans',system-ui,sans-serif", color:'var(--th-text-3)', fontSize:'0.70rem' }}>
+                  Both players must agree to end.
+                </span>
+                <button
+                  onClick={async () => {
+                    setEndConfirm(false)
+                    await handleProposeEnd()
+                  }}
+                  style={{ background:'rgba(248,113,113,0.10)', border:'1px solid rgba(248,113,113,0.28)', borderRadius:8, padding:'4px 12px', color:'#f87171', fontSize:'0.70rem', fontWeight:600, cursor:'pointer', fontFamily:"'DM Sans',system-ui,sans-serif", whiteSpace:'nowrap', transition:'background 0.15s ease' }}
+                  onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.background='rgba(248,113,113,0.18)')}
+                  onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.background='rgba(248,113,113,0.10)')}
+                >
+                  Send request
+                </button>
+                <button
+                  onClick={() => setEndConfirm(false)}
+                  style={{ background:'none', border:'none', color:'var(--th-text-4)', fontSize:'0.9rem', cursor:'pointer', padding:'0 2px', lineHeight:1 }}
+                  aria-label="Cancel"
+                >
+                  ×
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div style={{ paddingBottom:8 }}>
           <BrandWatermark />
         </div>
       </main>
 
-      {/* Option A — guest host banner, above the draw tray */}
       {showGuestHostBanner && <GuestHostBanner />}
 
       <DrawButton
@@ -303,6 +586,16 @@ export default function RoomPage() {
       )}
 
       {toast && <Toast message={toast} onDone={clearToast} />}
+
+      {/* Game-ended overlay — renders above everything including PickModal */}
+      {gameEnded && (
+        <GameEndedScreen
+          p1Name={p1Name}
+          p2Name={p2Name}
+          cardsDrawn={cards.length}
+          mySlot={mySlot ?? 1}
+        />
+      )}
     </>
   )
 }

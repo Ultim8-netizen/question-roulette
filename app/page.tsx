@@ -9,6 +9,7 @@ const TIER_COLORS = ['#4ade80', '#60a5fa', '#f87171', '#c084fc']
 
 export const SLOT_KEY      = (roomId: string) => `f9q-slot-${roomId}`
 export const LAST_ROOM_KEY = 'f9q-last-room'
+export const EXPIRES_KEY   = (roomId: string) => `f9q-expires-${roomId}`
 
 type GameMode = 'friendly' | 'intimate'
 
@@ -83,10 +84,6 @@ function ResumeBanner({ resume, onResume, onDismiss }: {
   )
 }
 
-// ---------------------------------------------------------------------------
-// Mode selector — shown before name entry
-// ---------------------------------------------------------------------------
-
 const MODE_CONFIG: Record<GameMode, {
   label:       string
   tagline:     string
@@ -144,8 +141,8 @@ function ModeSelector({ value, onChange }: { value: GameMode; onChange: (m: Game
 
         <div style={{ display:'flex', gap:10 }}>
           {(['friendly', 'intimate'] as GameMode[]).map(mode => {
-            const conf    = MODE_CONFIG[mode]
-            const active  = value === mode
+            const conf   = MODE_CONFIG[mode]
+            const active = value === mode
 
             return (
               <button
@@ -158,20 +155,16 @@ function ModeSelector({ value, onChange }: { value: GameMode; onChange: (m: Game
                 }}
                 aria-pressed={active}
               >
-                {/* Active indicator dot */}
                 <div style={{ position:'absolute', top:10, right:12, width:7, height:7, borderRadius:'50%', background: active ? conf.accentColor : 'transparent', boxShadow: active ? `0 0 8px ${conf.accentColor}` : 'none', border: active ? 'none' : '1px solid var(--th-border-2)', transition:'all 0.2s ease' }}/>
 
-                {/* Label */}
                 <div style={{ fontFamily:"'Playfair Display',Georgia,serif", color: active ? conf.accentColor : 'var(--th-text-2)', fontSize:'0.88rem', fontWeight:700, letterSpacing:'0.04em', transition:'color 0.2s ease' }}>
                   {conf.label}
                 </div>
 
-                {/* Tagline */}
                 <div style={{ fontFamily:"'Playfair Display',Georgia,serif", color:'var(--th-text-3)', fontSize:'0.62rem', fontStyle:'italic', lineHeight:1.55, fontWeight:400 }}>
                   {conf.tagline}
                 </div>
 
-                {/* Tier dots */}
                 <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:2 }}>
                   {conf.tiers.map((tier, i) => (
                     <div key={tier} style={{ display:'flex', alignItems:'center', gap:3 }}>
@@ -202,15 +195,51 @@ export default function HomePage() {
       let lastRoomId: string | null = null
       try { lastRoomId = localStorage.getItem(LAST_ROOM_KEY) } catch { setResume({ status:'none' }); return }
       if (!lastRoomId) { setResume({ status:'none' }); return }
+
+      // ── Local expiry check — no network needed ──────────────────────────
+      // We write EXPIRES_KEY on room creation (24 h from now). If that
+      // timestamp has passed we know the room is gone; skip the Supabase
+      // call and clean up immediately so the banner never flashes stale data.
+      try {
+        const expiresRaw = localStorage.getItem(EXPIRES_KEY(lastRoomId))
+        if (expiresRaw && Date.now() > Number(expiresRaw)) {
+          localStorage.removeItem(LAST_ROOM_KEY)
+          localStorage.removeItem(SLOT_KEY(lastRoomId))
+          localStorage.removeItem(EXPIRES_KEY(lastRoomId))
+          setResume({ status:'none' })
+          return
+        }
+      } catch { /* private browsing — fall through to Supabase check */ }
+
       let slot: string | null = null
       try { slot = localStorage.getItem(SLOT_KEY(lastRoomId)) } catch {}
-      if (slot !== '1') { try { localStorage.removeItem(LAST_ROOM_KEY) } catch {} setResume({ status:'none' }); return }
+      if (slot !== '1') {
+        try {
+          localStorage.removeItem(LAST_ROOM_KEY)
+          localStorage.removeItem(EXPIRES_KEY(lastRoomId))
+        } catch {}
+        setResume({ status:'none' })
+        return
+      }
+
       try {
         const { getSupabaseBrowserClient } = await import('@/lib/supabase')
         const supabase = getSupabaseBrowserClient()
         const { data, error } = await supabase.from('roulette_rooms').select('id,player2_name,expires_at').eq('id', lastRoomId).single()
-        if (error || !data) { try { localStorage.removeItem(LAST_ROOM_KEY) } catch {} setResume({ status:'none' }); return }
-        if (new Date(data.expires_at) < new Date()) { try { localStorage.removeItem(LAST_ROOM_KEY); localStorage.removeItem(SLOT_KEY(lastRoomId)) } catch {} setResume({ status:'none' }); return }
+        if (error || !data) {
+          try { localStorage.removeItem(LAST_ROOM_KEY); localStorage.removeItem(EXPIRES_KEY(lastRoomId)) } catch {}
+          setResume({ status:'none' })
+          return
+        }
+        if (new Date(data.expires_at) < new Date()) {
+          try {
+            localStorage.removeItem(LAST_ROOM_KEY)
+            localStorage.removeItem(SLOT_KEY(lastRoomId))
+            localStorage.removeItem(EXPIRES_KEY(lastRoomId))
+          } catch {}
+          setResume({ status:'none' })
+          return
+        }
         setResume({ status:'found', roomId:lastRoomId, player2Joined:!!data.player2_name })
       } catch { setResume({ status:'none' }) }
     }
@@ -218,7 +247,16 @@ export default function HomePage() {
   }, [])
 
   function handleResume() { const r = resume as Extract<ResumeState,{status:'found'}>; router.push(`/r/${r.roomId}?h=1`) }
-  function handleDismiss() { try { const r = resume as Extract<ResumeState,{status:'found'}>; localStorage.removeItem(LAST_ROOM_KEY); localStorage.removeItem(SLOT_KEY(r.roomId)) } catch {} setResume({ status:'none' }) }
+
+  function handleDismiss() {
+    try {
+      const r = resume as Extract<ResumeState,{status:'found'}>
+      localStorage.removeItem(LAST_ROOM_KEY)
+      localStorage.removeItem(SLOT_KEY(r.roomId))
+      localStorage.removeItem(EXPIRES_KEY(r.roomId))
+    } catch {}
+    setResume({ status:'none' })
+  }
 
   async function handleCreate() {
     const trimmed = name.trim()
@@ -231,14 +269,19 @@ export default function HomePage() {
     })
     if (!res.ok) { setLoading(false); setError('Could not create room. Try again.'); return }
     const { roomId } = await res.json()
-    try { localStorage.setItem(SLOT_KEY(roomId), '1'); localStorage.setItem(LAST_ROOM_KEY, roomId) } catch {}
+    try {
+      localStorage.setItem(SLOT_KEY(roomId), '1')
+      localStorage.setItem(LAST_ROOM_KEY, roomId)
+      // Write the expiry timestamp locally so the resume banner can be
+      // dismissed instantly after 24 h without a Supabase round-trip.
+      localStorage.setItem(EXPIRES_KEY(roomId), String(Date.now() + 24 * 60 * 60 * 1000))
+    } catch {}
     router.push(`/r/${roomId}?h=1`)
   }
 
   return (
     <>
       <style>{`
-        /* ── Pre-game font: Playfair Display ── */
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&display=swap');
 
         @keyframes hp-orb-1 { 0%,100%{transform:translate(0,0) scale(1);opacity:0.58} 50%{transform:translate(20px,-14px) scale(1.08);opacity:0.80} }
@@ -276,7 +319,6 @@ export default function HomePage() {
         .hp-dot-2{animation:hp-dot 3.0s ease-in-out 1.0s infinite}
         .hp-dot-3{animation:hp-dot 3.0s ease-in-out 1.5s infinite}
 
-        /* All pre-game text uses Playfair Display */
         .hp-root { font-family: 'Playfair Display', Georgia, serif; }
 
         .hp-guide-link {
@@ -296,7 +338,6 @@ export default function HomePage() {
           <ThemeToggle />
         </div>
 
-        {/* Background orbs */}
         {[
           { cls:'hp-orb-1', t:'-14%', l:'-12%', c:TIER_COLORS[0], op:'2a' },
           { cls:'hp-orb-2', t:'-10%', r:'-14%', c:TIER_COLORS[1], op:'22' },
@@ -306,7 +347,6 @@ export default function HomePage() {
           <div key={i} className={cls} style={{ position:'absolute', top:t, left:l, right:r, bottom:b, width:'58vw', height:'58vw', maxWidth:380, maxHeight:380, borderRadius:'50%', background:`radial-gradient(circle,${c}${op} 0%,transparent 68%)`, pointerEvents:'none' }}/>
         ))}
 
-        {/* Noise */}
         <div style={{ position:'absolute', inset:0, pointerEvents:'none', backgroundImage:`url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E")`, backgroundSize:'180px 180px', opacity:0.5 }}/>
 
         <div style={{ position:'relative', zIndex:1, width:'100%', maxWidth:380, display:'flex', flexDirection:'column', alignItems:'center' }}>
@@ -315,7 +355,6 @@ export default function HomePage() {
             <Room13Logo width={180} height={82}/>
           </div>
 
-          {/* Game name */}
           <div className="hp-t1" style={{ textAlign:'center', marginBottom:4 }}>
             <h1 style={{ fontFamily:"'Playfair Display',Georgia,serif", color:'var(--th-text-1)', fontSize:'2.6rem', fontWeight:700, letterSpacing:'0.08em', lineHeight:1, margin:0 }}>
               Room 13
@@ -328,7 +367,6 @@ export default function HomePage() {
             </span>
           </div>
 
-          {/* Tier dot divider */}
           <div className="hp-div" style={{ display:'flex', alignItems:'center', gap:10, marginBottom:26, width:'100%' }}>
             <div style={{ flex:1, height:1, background:'linear-gradient(to right,transparent,var(--th-border-2))' }}/>
             {TIER_COLORS.map((c,i) => (
@@ -337,7 +375,6 @@ export default function HomePage() {
             <div style={{ flex:1, height:1, background:'linear-gradient(to left,transparent,var(--th-border-2))' }}/>
           </div>
 
-          {/* Tagline */}
           <div className="hp-t2" style={{ textAlign:'center', marginBottom:10 }}>
             <p style={{ fontFamily:"'Playfair Display',Georgia,serif", color:'var(--th-text-1)', fontSize:'1.50rem', fontWeight:400, fontStyle:'italic', lineHeight:1.3, margin:0 }}>
               Every card a different world.
@@ -350,7 +387,6 @@ export default function HomePage() {
             </p>
           </div>
 
-          {/* Tier labels */}
           <div className="hp-t3" style={{ display:'flex', alignItems:'center', gap:6, marginBottom:36, marginTop:8 }}>
             {(['Light','Medium','Deep','Spicy'] as const).map((label,i) => (
               <div key={label} style={{ display:'flex', alignItems:'center', gap:5 }}>
@@ -360,13 +396,11 @@ export default function HomePage() {
             ))}
           </div>
 
-          {/* Form */}
           <div className="hp-form" style={{ width:'100%' }}>
             {resume.status === 'found' && (
               <ResumeBanner resume={resume} onResume={handleResume} onDismiss={handleDismiss}/>
             )}
 
-            {/* Mode selector — before name/enter */}
             <ModeSelector value={mode} onChange={setMode} />
 
             <div style={{ position:'relative', marginBottom:12 }}>
@@ -395,7 +429,6 @@ export default function HomePage() {
             </button>
           </div>
 
-          {/* How to play */}
           <div style={{ marginTop:20, display:'flex', alignItems:'center', justifyContent:'center' }}>
             <Link href="/how-to-play" className="hp-guide-link">
               <svg width="12" height="12" viewBox="0 0 14 14" fill="none">

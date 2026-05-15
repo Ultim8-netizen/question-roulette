@@ -92,6 +92,9 @@ export type RoomEvent =
       type: 'CARD_CLOSED'
       questionIndex: number
     }
+  | { type: 'END_GAME_PROPOSED'; proposedBy: PlayerSlot }
+  | { type: 'END_GAME_ACCEPTED' }
+  | { type: 'END_GAME_DECLINED' }
 
 export type DrawnCard = {
   questionIndex: number

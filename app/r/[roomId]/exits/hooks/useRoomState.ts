@@ -52,16 +52,22 @@ export type RoomStateReturn = {
   otherIsTyping:      boolean
   otherTypingIndex:   number | null
 
-  handleJoin:         (name: string) => Promise<void>
-  handleDraw:         () => Promise<void>
-  handleOpenCard:     (card: DrawnCard) => void
-  handleCloseCard:    () => Promise<void>
-  handlePropose:      (text: string, tier: QuestionTier) => Promise<void>
-  handleConsent:      (accepted: boolean) => Promise<void>
-  handleSendMessage:  (content: string, replyToId?: string) => Promise<void>
-  handleEditMessage:  (messageId: string, content: string) => Promise<void>
-  handleTyping:       () => Promise<void>
-  clearToast:         () => void
+  // End-game
+  endGameProposal:    PlayerSlot | null
+  gameEnded:          boolean
+
+  handleJoin:             (name: string) => Promise<void>
+  handleDraw:             () => Promise<void>
+  handleOpenCard:         (card: DrawnCard) => void
+  handleCloseCard:        () => Promise<void>
+  handlePropose:          (text: string, tier: QuestionTier) => Promise<void>
+  handleConsent:          (accepted: boolean) => Promise<void>
+  handleSendMessage:      (content: string, replyToId?: string) => Promise<void>
+  handleEditMessage:      (messageId: string, content: string) => Promise<void>
+  handleTyping:           () => Promise<void>
+  handleProposeEnd:       () => Promise<void>
+  handleEndGameConsent:   (accepted: boolean) => Promise<void>
+  clearToast:             () => void
 }
 
 // ---------------------------------------------------------------------------
@@ -109,6 +115,10 @@ export function useRoomState(roomId: string): RoomStateReturn {
   const [otherTypingIndex,  setOtherTypingIndex]  = useState<number | null>(null)
   const [unreadCardIndices, setUnreadCardIndices] = useState<number[]>([])
 
+  // End-game state
+  const [endGameProposal, setEndGameProposal] = useState<PlayerSlot | null>(null)
+  const [gameEnded,       setGameEnded]       = useState(false)
+
   const myPersonalUrl = useMemo(
     () => (mySlot !== null ? buildPersonalUrl(roomId, mySlot) : ''),
     [mySlot, roomId],
@@ -119,11 +129,6 @@ export function useRoomState(roomId: string): RoomStateReturn {
   const mySlotRef        = useRef<PlayerSlot | null>(null)
   const activePickRef    = useRef<PickState | null>(null)
 
-  // ── Pending edits ref ──────────────────────────────────────────────────────
-  // Tracks edits that are in-flight (PATCH sent but not yet confirmed) or
-  // recently confirmed (PATCH done but loadMessagesForCard may not have
-  // fetched the updated row yet). This ensures loadMessagesForCard never
-  // overwrites a local edit with a stale server response.
   const pendingEditsRef = useRef<Map<string, { content: string; edited_at: string }>>(new Map())
 
   useEffect(() => { roomRef.current       = room      }, [room])
@@ -131,8 +136,6 @@ export function useRoomState(roomId: string): RoomStateReturn {
   useEffect(() => { activePickRef.current = activePick }, [activePick])
 
   // ── Message loader ─────────────────────────────────────────────────────────
-  // Applies any pending in-flight edits on top of the server payload so that
-  // a slow or racing GET never reverts an optimistic edit.
 
   async function loadMessagesForCard(questionIndex: number) {
     const res = await fetch(
@@ -294,8 +297,34 @@ export function useRoomState(roomId: string): RoomStateReturn {
           setToast(`${closerName} closed the card — tap it in the grid to continue`)
         }
       }
+
+      // ── End-game events ──────────────────────────────────────────────────
+
+      if (event.type === 'END_GAME_PROPOSED') {
+        // The proposer already set their own state in handleProposeEnd.
+        // Only the other player needs to react here.
+        if (event.proposedBy !== mySlotRef.current) {
+          setEndGameProposal(event.proposedBy)
+        }
+      }
+
+      if (event.type === 'END_GAME_ACCEPTED') {
+        // The acceptor already called setGameEnded in handleEndGameConsent.
+        // The proposer learns via this event.
+        setGameEnded(true)
+      }
+
+      if (event.type === 'END_GAME_DECLINED') {
+        setEndGameProposal(null)
+        // Only the proposer receives this and needs the feedback toast.
+        if (endGameProposal === mySlotRef.current) {
+          setToast('They want to keep playing')
+        }
+      }
     },
-    [roomId],
+    // endGameProposal intentionally in deps so the DECLINED branch can
+    // check whether we were the proposer at event-receive time.
+    [roomId, endGameProposal],
   )
 
   const { sendEvent, status: channelStatus } = useRoomChannel({
@@ -608,18 +637,11 @@ export function useRoomState(roomId: string): RoomStateReturn {
   async function handleEditMessage(messageId: string, content: string) {
     if (!mySlot) return
 
-    // Snapshot the pre-edit message for the error-revert path.
     const original = messages.find(m => m.id === messageId)
-
     const optimisticEditedAt = new Date().toISOString()
 
-    // Register the pending edit BEFORE the PATCH so that any concurrent
-    // loadMessagesForCard call (triggered by card close/reopen while the
-    // network request is in-flight) re-applies this edit on top of whatever
-    // the server returns, preventing stale data from reverting the change.
     pendingEditsRef.current.set(messageId, { content, edited_at: optimisticEditedAt })
 
-    // Optimistic update — visible immediately.
     setMessages(prev =>
       prev.map(m =>
         m.id === messageId ? { ...m, content, edited_at: optimisticEditedAt } : m,
@@ -633,7 +655,6 @@ export function useRoomState(roomId: string): RoomStateReturn {
     })
 
     if (!res.ok) {
-      // PATCH failed — clear the pending edit and revert the optimistic update.
       pendingEditsRef.current.delete(messageId)
       if (original) {
         setMessages(prev =>
@@ -646,15 +667,12 @@ export function useRoomState(roomId: string): RoomStateReturn {
 
     const { editedAt } = await res.json()
 
-    // Apply the server-confirmed timestamp.
     setMessages(prev =>
       prev.map(m =>
         m.id === messageId ? { ...m, content, edited_at: editedAt } : m,
       ),
     )
 
-    // PATCH committed — the DB now has the edit. Clear the pending entry so
-    // future loadMessagesForCard calls read fresh server data normally.
     pendingEditsRef.current.delete(messageId)
 
     await sendEvent({ type: 'MESSAGE_EDITED', messageId, content, editedAt })
@@ -665,6 +683,28 @@ export function useRoomState(roomId: string): RoomStateReturn {
     await sendEvent({ type: 'TYPING', questionIndex: activePick.questionIndex, player: mySlot })
   }
 
+  // ── End-game actions ───────────────────────────────────────────────────────
+
+  async function handleProposeEnd() {
+    if (!mySlot || endGameProposal !== null) return
+    // Set locally immediately so UI switches to pending state for the proposer.
+    setEndGameProposal(mySlot)
+    await sendEvent({ type: 'END_GAME_PROPOSED', proposedBy: mySlot })
+  }
+
+  async function handleEndGameConsent(accepted: boolean) {
+    if (!mySlot) return
+    if (accepted) {
+      // Responder marks game ended locally before broadcasting so their
+      // screen transitions immediately without waiting for the echo.
+      setGameEnded(true)
+      await sendEvent({ type: 'END_GAME_ACCEPTED' })
+    } else {
+      setEndGameProposal(null)
+      await sendEvent({ type: 'END_GAME_DECLINED' })
+    }
+  }
+
   function clearToast() { setToast(null) }
 
   return {
@@ -672,8 +712,9 @@ export function useRoomState(roomId: string): RoomStateReturn {
     pendingProposal, messages, toast, unreadCardIndices, myPersonalUrl,
     joinLoading, drawLoading, proposeLoading, consentLoading, isSendingMessage,
     channelStatus, otherIsTyping, otherTypingIndex,
+    endGameProposal, gameEnded,
     handleJoin, handleDraw, handleOpenCard, handleCloseCard,
     handlePropose, handleConsent, handleSendMessage, handleEditMessage,
-    handleTyping, clearToast,
+    handleTyping, handleProposeEnd, handleEndGameConsent, clearToast,
   }
 }
