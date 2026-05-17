@@ -14,6 +14,7 @@ import type {
 import { useRoomChannel } from '@/hooks/useRoomChannel'
 import type { DrawnCard } from '@/components/QuestionGrid'
 import type { ChannelStatus } from '@/hooks/useRoomChannel'
+import { sendNotification } from '@/lib/notifications'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -202,6 +203,11 @@ export function useRoomState(roomId: string): RoomStateReturn {
             isMyDraw:      true,
           })
         } else {
+          // ── Notification: other player drew a card ──────────────────────
+          sendNotification({
+            title: `${drawnByName} drew a card`,
+            body:  'Tap to open Room 13 and see what came up.',
+          })
           setToast(`${drawnByName} drew a card — tap it to read and respond`)
         }
       }
@@ -254,6 +260,17 @@ export function useRoomState(roomId: string): RoomStateReturn {
           )
           setToast('New message on a card')
         }
+
+        // ── Notification: message from the other player ─────────────────
+        // Only fire if they sent it (not an echo of our own message).
+        if (event.player !== mySlotRef.current) {
+          sendNotification({
+            title: `${event.playerName} replied`,
+            body:  event.content.length > 80
+              ? `${event.content.slice(0, 77)}…`
+              : event.content,
+          })
+        }
       }
 
       if (event.type === 'MESSAGE_EDITED') {
@@ -301,29 +318,22 @@ export function useRoomState(roomId: string): RoomStateReturn {
       // ── End-game events ──────────────────────────────────────────────────
 
       if (event.type === 'END_GAME_PROPOSED') {
-        // The proposer already set their own state in handleProposeEnd.
-        // Only the other player needs to react here.
         if (event.proposedBy !== mySlotRef.current) {
           setEndGameProposal(event.proposedBy)
         }
       }
 
       if (event.type === 'END_GAME_ACCEPTED') {
-        // The acceptor already called setGameEnded in handleEndGameConsent.
-        // The proposer learns via this event.
         setGameEnded(true)
       }
 
       if (event.type === 'END_GAME_DECLINED') {
         setEndGameProposal(null)
-        // Only the proposer receives this and needs the feedback toast.
         if (endGameProposal === mySlotRef.current) {
           setToast('They want to keep playing')
         }
       }
     },
-    // endGameProposal intentionally in deps so the DECLINED branch can
-    // check whether we were the proposer at event-receive time.
     [roomId, endGameProposal],
   )
 
@@ -687,7 +697,6 @@ export function useRoomState(roomId: string): RoomStateReturn {
 
   async function handleProposeEnd() {
     if (!mySlot || endGameProposal !== null) return
-    // Set locally immediately so UI switches to pending state for the proposer.
     setEndGameProposal(mySlot)
     await sendEvent({ type: 'END_GAME_PROPOSED', proposedBy: mySlot })
   }
@@ -695,8 +704,6 @@ export function useRoomState(roomId: string): RoomStateReturn {
   async function handleEndGameConsent(accepted: boolean) {
     if (!mySlot) return
     if (accepted) {
-      // Responder marks game ended locally before broadcasting so their
-      // screen transitions immediately without waiting for the echo.
       setGameEnded(true)
       await sendEvent({ type: 'END_GAME_ACCEPTED' })
     } else {
